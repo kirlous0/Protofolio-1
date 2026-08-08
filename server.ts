@@ -33,12 +33,12 @@ async function startServer() {
   // Smart AI Assistant for Project Metadata
   app.post("/api/ai/enhance-project", async (req, res) => {
     try {
-      const { title, description, techStack, category, readmeContent, githubUrl } = req.body;
+      const { title, description, techStack, category, readmeContent, githubUrl, liveUrl } = req.body;
 
       const ai = getGenAIClient();
 
-      const promptText = `You are a world-class senior tech portfolio copywriter and technical developer assistant for Kirlous Wael (a Full Stack Web Developer & Android Developer).
-Your goal is to transform project information into high-converting, professional, and SEO-optimized portfolio metadata.
+      const promptText = `You are an elite principal engineer and technical developer portfolio strategist for Kirlous Wael (Full Stack Web & Android Developer).
+Your goal is to deeply analyze the provided codebase/README details and synthesize high-converting, professional, and SEO-optimized portfolio metadata.
 
 Input Information:
 - Current Title: ${title || "Untitled Project"}
@@ -46,27 +46,22 @@ Input Information:
 - Category: ${category || "Web"}
 - Current Tech Stack: ${Array.isArray(techStack) ? techStack.join(", ") : techStack || "None"}
 - GitHub Repository URL: ${githubUrl || "N/A"}
-${readmeContent ? `- Repository README content snippet:\n"""${readmeContent.slice(0, 3500)}"""` : ""}
+- Live Demo / Production URL: ${liveUrl || "N/A"}
+${readmeContent ? `- Repository README content snippet:\n"""${readmeContent.slice(0, 4000)}"""` : ""}
 
-Generate a JSON object with:
-1. "autoTitle": A catchy, compelling, and professional marketing title for the project (e.g. "NovaTrack - Real-Time Android Expense & Budget Analytics").
-2. "problem": A concise description of the problem this project solves.
-3. "solution": A clear explanation of the architecture/technical solution implemented.
-4. "keyFeatures": An array of 3 to 6 key features or user capabilities.
-5. "enhancedDescription": A clean, impactful short summary description (2-3 sentences) suitable for project preview cards.
-6. "longDescription": A detailed technical breakdown formatted cleanly with Problem, Solution, and Core Architecture.
-7. "techStack": An array of detected or relevant technologies sorted by importance (e.g. ["React", "TypeScript", "Tailwind CSS", "Express", "Node.js"]).
-8. "highlights": An array of 3-5 technical accomplishment bullet points (e.g. "Sub-100ms render speeds with optimistic UI updates").
-9. "seoMetadata": An object with:
-   - "metaTitle": Search engine title under 60 chars.
-   - "metaDescription": Search engine snippet (140-160 chars).
-   - "ogTitle": OpenGraph social title.
-   - "ogDescription": OpenGraph social description.
-   - "ogType": "website" or "article".
-   - "keywords": Array of 5-8 relevant search keywords.`;
+Generate a comprehensive JSON object with:
+1. "autoTitle": A catchy, compelling, and professional title (e.g. "Nile Elegance - E-Commerce Web Platform & Admin Suite").
+2. "problem": An articulate explanation of the engineering problem solved.
+3. "solution": A clear explanation of the architecture, state management, and performance strategy.
+4. "keyFeatures": 4 to 6 key technical features or capabilities.
+5. "enhancedDescription": A crisp 2-sentence summary suitable for portfolio preview cards.
+6. "longDescription": A detailed technical case study in clean Markdown format covering Problem, Architecture, Tech Decisions, and Highlights.
+7. "techStack": Array of key technologies sorted by importance.
+8. "highlights": Array of 3-5 technical accomplishment bullet points.
+9. "seoMetadata": Full search engine optimization fields (metaTitle, metaDescription, ogTitle, ogDescription, ogType, keywords).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
         contents: promptText,
         config: {
           responseMimeType: "application/json",

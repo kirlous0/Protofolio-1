@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, CheckCircle2, AlertCircle, Search, Layers, FileText } from 'lucide-react';
+import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, CheckCircle2, AlertCircle, Search, Layers, FileText, Camera, Image, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
+import { getWebsiteScreenshotUrl } from '../../utils/screenshot';
 
 interface ProjectFormModalProps {
   isOpen: boolean;
@@ -139,16 +140,35 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         techStack: techStackInput,
         category,
         githubUrl,
+        liveUrl,
         readmeContent: readmeSnippet || longDescription,
       });
 
       setAiSuggestion(enhancement);
       setShowAiModal(true);
+
+      // Auto assign image URL if default or empty
+      if (enhancement.screenshotUrl && (!imageUrl || imageUrl.includes('unsplash.com/photo-1555066931-4365d14bab8c'))) {
+        setImageUrl(enhancement.screenshotUrl);
+      }
     } catch (err: any) {
       setAiError(err.message || 'AI generation failed. Please check inputs.');
     } finally {
       setAiLoading(false);
     }
+  };
+
+  const handleAutoGenerateScreenshot = () => {
+    const generatedUrl = getWebsiteScreenshotUrl({
+      liveUrl,
+      githubUrl,
+      category,
+      title,
+      techStack: techStackInput.split(',').map(s => s.trim()).filter(Boolean),
+    });
+    setImageUrl(generatedUrl);
+    setAiSuccessMsg('📷 Live website screenshot URL auto-generated!');
+    setTimeout(() => setAiSuccessMsg(''), 3000);
   };
 
   const handleApplyAISuggestion = () => {
@@ -162,6 +182,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     }
     if (aiSuggestion.highlights && aiSuggestion.highlights.length > 0) {
       setHighlightsInput(aiSuggestion.highlights.join('\n'));
+    }
+    if (aiSuggestion.screenshotUrl) {
+      setImageUrl(aiSuggestion.screenshotUrl);
     }
 
     if (aiSuggestion.seoMetadata) {
@@ -434,18 +457,59 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
               </div>
             )}
 
-            {/* Image URL & Presets */}
+            {/* Image URL & Presets & Auto-Screenshot */}
             <div className="space-y-2">
-              <label className="font-mono font-bold">Image Preview URL *</label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="font-mono font-bold">Image Preview URL / Screenshot *</label>
+                <button
+                  type="button"
+                  onClick={handleAutoGenerateScreenshot}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shadow-sm transition-transform active:scale-95"
+                  title="Auto-capture live website screenshot from Live URL or GitHub"
+                >
+                  <Camera className="w-3.5 h-3.5 text-cyan-200" />
+                  <span>📷 Auto Website Screenshot</span>
+                </button>
+              </div>
+
               <input
                 type="url"
                 required
+                placeholder="https://..."
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none focus:border-amber-500 ${
                   darkMode ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-amber-200 text-stone-900'
                 }`}
               />
+
+              {/* Live Thumbnail Image Preview */}
+              {imageUrl && (
+                <div className={`p-2.5 rounded-xl border flex items-center gap-3 ${
+                  darkMode ? 'bg-stone-950/80 border-stone-800' : 'bg-stone-100 border-amber-200'
+                }`}>
+                  <div className="w-20 h-14 rounded-lg overflow-hidden bg-stone-900 shrink-0 border border-stone-700 relative">
+                    <img
+                      src={imageUrl}
+                      alt="Preview screenshot"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80';
+                      }}
+                    />
+                  </div>
+                  <div className="text-[11px] min-w-0 space-y-0.5">
+                    <p className="font-bold text-amber-500 flex items-center gap-1">
+                      <Image className="w-3.5 h-3.5" />
+                      <span>Live Image Preview Active</span>
+                    </p>
+                    <p className="text-stone-400 font-mono text-[10px] truncate max-w-[320px]">
+                      {imageUrl}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="text-[10px] text-stone-500 font-mono self-center">Presets:</span>
                 {presetImages.map((preset, idx) => (

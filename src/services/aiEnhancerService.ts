@@ -1,4 +1,5 @@
-import { AIEnhancementResponse } from './types';
+import { AIEnhancementResponse } from '../types';
+import { getWebsiteScreenshotUrl } from '../utils/screenshot';
 
 export interface AIEnhanceInput {
   title?: string;
@@ -6,19 +7,20 @@ export interface AIEnhanceInput {
   techStack?: string | string[];
   category?: 'Web' | 'Android' | 'Full Stack';
   githubUrl?: string;
+  liveUrl?: string;
   readmeContent?: string;
 }
 
 /**
- * Client-Side Smart AI Enhancement Fallback Generator
- * Produces structured, high-converting portfolio metadata even when static hosting
- * lacks a Node backend API or GEMINI_API_KEY environment variable.
+ * Client-Side Smart AI Enhancement Fallback & Enhancer
+ * Produces deep, intelligent, structured portfolio metadata and screenshot URLs.
  */
 export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhancementResponse {
   const rawTitle = (input.title || 'Portfolio App').trim();
   const category = input.category || 'Web';
-  const rawDesc = (input.description || 'Modern full stack application built with cutting edge tools.').trim();
+  const rawDesc = (input.description || 'Modern high-performance application built with cutting-edge tools.').trim();
   const githubUrl = input.githubUrl || '';
+  const liveUrl = input.liveUrl || '';
   const readme = input.readmeContent || '';
 
   // Parse tech stack
@@ -29,11 +31,22 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
     techArray = input.techStack.split(',').map(s => s.trim()).filter(Boolean);
   }
 
+  // Auto-detect missing tech stack from README or Title
+  if (readme) {
+    const lowerReadme = readme.toLowerCase();
+    const commonTech = ['TypeScript', 'React', 'Kotlin', 'Jetpack Compose', 'Node.js', 'Express', 'Tailwind CSS', 'Vite', 'Firebase', 'Next.js', 'PostgreSQL', 'Docker', 'REST API', 'GraphQL', 'Redux', 'Room DB', 'Coroutines'];
+    commonTech.forEach(t => {
+      if (lowerReadme.includes(t.toLowerCase()) && !techArray.some(e => e.toLowerCase() === t.toLowerCase())) {
+        techArray.push(t);
+      }
+    });
+  }
+
   if (techArray.length === 0) {
     if (category === 'Android') {
-      techArray = ['Kotlin', 'Jetpack Compose', 'Room DB', 'Android SDK', 'Coroutines'];
+      techArray = ['Kotlin', 'Jetpack Compose', 'Room DB', 'Android SDK', 'Coroutines', 'Material 3'];
     } else if (category === 'Full Stack') {
-      techArray = ['TypeScript', 'React', 'Node.js', 'Express', 'Tailwind CSS', 'REST API'];
+      techArray = ['TypeScript', 'React', 'Node.js', 'Express', 'Tailwind CSS', 'REST API', 'Vite'];
     } else {
       techArray = ['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Framer Motion'];
     }
@@ -43,33 +56,41 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
   const cleanTitle = rawTitle.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   let autoTitle = cleanTitle;
   if (!autoTitle.toLowerCase().includes('android') && category === 'Android') {
-    autoTitle = `${cleanTitle} - Native Android Application`;
-  } else if (!autoTitle.toLowerCase().includes('web') && category === 'Web') {
-    autoTitle = `${cleanTitle} - Modern Web Platform`;
+    autoTitle = `${cleanTitle} - Native Android Platform`;
+  } else if (!autoTitle.toLowerCase().includes('web') && category === 'Web' && !autoTitle.includes('-')) {
+    autoTitle = `${cleanTitle} - Interactive Web Application`;
   } else if (category === 'Full Stack' && !autoTitle.includes('-')) {
-    autoTitle = `${cleanTitle} - Full Stack Application`;
+    autoTitle = `${cleanTitle} - Full Stack Architecture`;
   }
 
-  // Derive problem & solution
-  const problem = `Managing complex user requirements and maintaining real-time performance without sacrificing UI fluid dynamics or data persistence.`;
-  const solution = `Engineered a modular ${category} architecture leveraging ${techArray.slice(0, 3).join(', ')} with optimized state management and offline-first capabilities.`;
+  // Tailored problem & solution statement
+  const problem = `Delivering a seamless, highly responsive user experience across devices while maintaining reliable real-time state synchronization and fast initial load times.`;
+  const solution = `Engineered a robust, modular ${category} solution using ${techArray.slice(0, 4).join(', ')}. Implemented scalable architecture, responsive UI components, and optimized data flow.`;
+
+  // Key Features
+  const keyFeatures = [
+    `Intuitive, responsive user interface built with ${techArray[0] || 'Modern UI Framework'}`,
+    `Optimized data management with low latency and clean component architecture`,
+    `Seamless integration with external APIs and automated state persistence`,
+    `Cross-platform compatibility with high performance scoring and smooth transitions`,
+  ];
 
   // Enhanced Short Description
-  const enhancedDescription = `${cleanTitle} is a ${category.toLowerCase()} application designed for high performance and seamless user experience, built using ${techArray.slice(0, 4).join(', ')}.`;
+  const enhancedDescription = `${cleanTitle} is a production-grade ${category.toLowerCase()} application designed for speed, fluid interactions, and scalability, built with ${techArray.slice(0, 4).join(', ')}.`;
 
   // Long description & Case Study
   const longDescription = `### ${autoTitle}\n\n` +
     `#### 🎯 Problem Statement\n${problem}\n\n` +
     `#### 💡 Technical Solution & Architecture\n${solution}\n\n` +
     `#### 🛠️ Technology Stack & Tools\n${techArray.map(t => `- **${t}**`).join('\n')}\n` +
-    (readme ? `\n\n#### 📄 Repository README Overview\n${readme.slice(0, 800)}...` : '');
+    (readme ? `\n\n#### 📄 Repository README Snippet\n${readme.slice(0, 900)}...` : '');
 
   // Highlights
   const highlights = [
-    `Architected with modular ${techArray[0] || 'TypeScript'} component structure and responsive design`,
-    `Optimized rendering performance with clean state management and zero layout shifts`,
-    `Integrated real-time interactions, custom UI controls, and theme modes`,
-    githubUrl ? `Direct GitHub integration: ${githubUrl}` : `Production ready deployment with CI/CD optimization`,
+    `Architected with modular ${techArray[0] || 'TypeScript'} structure and high test coverage standards`,
+    `Achieved zero layout shift and fluid 60fps animations across all screen viewports`,
+    `Built production-ready deployment pipelines with automated CI/CD workflows`,
+    liveUrl ? `Live production environment: ${liveUrl}` : (githubUrl ? `Open-source codebase on GitHub: ${githubUrl}` : `Fully tested & deployed application`),
   ];
 
   // SEO Metadata
@@ -84,26 +105,37 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
       ...techArray.map(t => t.toLowerCase()),
       'kirlous wael',
       'developer portfolio',
-      'full stack',
-      'software engineer'
+      'full stack engineer',
+      'software showcase'
     ].slice(0, 8),
   };
 
+  // Auto Screenshot URL
+  const screenshotUrl = getWebsiteScreenshotUrl({
+    liveUrl,
+    githubUrl,
+    category,
+    title: autoTitle,
+    techStack: techArray,
+  });
+
   return {
     autoTitle,
-    enhancedDescription,
-    longDescription,
     problem,
     solution,
+    keyFeatures,
+    enhancedDescription,
+    longDescription,
     techStack: techArray,
     highlights,
     seoMetadata,
+    screenshotUrl,
   };
 }
 
 /**
  * Safely calls backend AI endpoint or falls back to client generator.
- * NEVER throws JSON parse error!
+ * Guaranteed response with screenshot URL!
  */
 export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnhancementResponse> {
   try {
@@ -117,6 +149,16 @@ export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnh
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (data.success && data.data) {
+        // Ensure screenshotUrl is present
+        if (!data.data.screenshotUrl) {
+          data.data.screenshotUrl = getWebsiteScreenshotUrl({
+            liveUrl: input.liveUrl,
+            githubUrl: input.githubUrl,
+            category: input.category,
+            title: data.data.autoTitle || input.title,
+            techStack: data.data.techStack || input.techStack,
+          });
+        }
         return data.data;
       }
     }
@@ -127,3 +169,4 @@ export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnh
   // Safe fallback guarantee
   return generateClientSideAIEnhancement(input);
 }
+

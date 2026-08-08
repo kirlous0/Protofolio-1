@@ -25,6 +25,7 @@ import {
 import { GitHubRepoItem, IntegrationConfig, Project, VercelProjectItem } from '../../types';
 import { storageService } from '../../services/storageService';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
+import { getWebsiteScreenshotUrl } from '../../utils/screenshot';
 
 interface IntegrationsTabProps {
   darkMode: boolean;
@@ -360,6 +361,14 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         liveUrl = `https://${matchingVercel.targets.production.url}`;
       }
 
+      const autoScreenshot = enriched.screenshotUrl || getWebsiteScreenshotUrl({
+        liveUrl,
+        githubUrl: repo.html_url,
+        category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
+        title: repo.name,
+        techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+      });
+
       onImportDraftProject({
         title: enriched.autoTitle || repo.name,
         description: enriched.enhancedDescription || repo.description || 'Modern full stack project.',
@@ -368,9 +377,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         techStack: enriched.techStack || [repo.language || 'TypeScript'],
         githubUrl: repo.html_url,
         liveUrl,
-        imageUrl: repo.language === 'Kotlin'
-          ? 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
-          : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+        imageUrl: autoScreenshot,
         featured: true,
         highlights: enriched.highlights || [
           `AI Enriched from repository ${repo.full_name}`,
@@ -425,6 +432,14 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       liveUrl = `https://${matchingVercel.targets.production.url}`;
     }
 
+    const autoScreenshot = getWebsiteScreenshotUrl({
+      liveUrl,
+      githubUrl: repo.html_url,
+      category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
+      title: repo.name,
+      techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+    });
+
     const draft: Partial<Project> = {
       title: repo.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
       description: repo.description || `Modern ${repo.language || 'Full Stack'} application built by Kirlous Wael.`,
@@ -432,7 +447,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
       githubUrl: repo.html_url,
       liveUrl,
-      imageUrl: repo.language === 'Kotlin' ? 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80' : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+      imageUrl: autoScreenshot,
       featured: repo.stargazers_count > 0,
       highlights: [
         `Auto-imported from GitHub repository ${repo.full_name}`,

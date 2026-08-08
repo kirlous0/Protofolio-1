@@ -86,6 +86,7 @@ export interface AIEnhancementResponse {
   techStack: string[];
   highlights: string[];
   seoMetadata: SEOMetadata;
+  screenshotUrl?: string;
 }
 
 export interface SkillItem {
