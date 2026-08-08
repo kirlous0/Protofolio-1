@@ -5,37 +5,37 @@
 
 // Curated UI Screenshot Pools - Strictly modern application interfaces (NO code editors or syntax screens)
 const MOBILE_ANDROID_UI = [
-  'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80', // Android Native UI
-  'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80', // Smartphone App Dashboard
-  'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80', // Mobile Tracking Screen
-  'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80', // Android Device App Interface
+  'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80', // Android Native UI & Navigation Menu
+  'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80', // Smartphone App Inner Dashboard
+  'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80', // Mobile Tracking Screen & Menu Drawer
+  'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80', // Android Device App Settings & Profile Interface
 ];
 
 const DASHBOARD_ANALYTICS_UI = [
-  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80', // Modern Analytics Dashboard
-  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80', // Web Analytics & KPI Charts
-  'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80', // Data Analysis Suite
-  'https://images.unsplash.com/photo-1542744094-3a31b272c390?auto=format&fit=crop&w=1200&q=80', // Executive Management Platform
+  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80', // Modern Analytics Dashboard & Sidebar
+  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80', // Web Analytics, Menu Items & KPI Charts
+  'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80', // Data Analysis Suite & Navigation Header
+  'https://images.unsplash.com/photo-1542744094-3a31b272c390?auto=format&fit=crop&w=1200&q=80', // Executive Management Platform & Sub-pages
 ];
 
 const ECOMMERCE_SHOPPING_UI = [
-  'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80', // E-Commerce Checkout UI
-  'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80', // Online Storefront
-  'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80', // Digital Fashion & Shopping UI
-  'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80', // Retail Web Catalog
+  'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80', // E-Commerce Checkout UI & Cart Menu
+  'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80', // Online Storefront & Category Navigation
+  'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80', // Digital Fashion & Product Details Page
+  'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80', // Retail Web Catalog & Filter Menu
 ];
 
 const AI_GENAI_UI = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80', // Neural AI Interface
-  'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80', // AI Platform Workspace
-  'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80', // Smart Intelligent Studio
+  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80', // Neural AI Interface & Sidebar Prompts
+  'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80', // AI Platform Workspace & Chat History Menu
+  'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80', // Smart Intelligent Studio & Settings View
 ];
 
 const SAAS_WEB_PLATFORM_UI = [
-  'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80', // SaaS Web App Landing UI
-  'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80', // Modern Web Platform
-  'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80', // Product Design UI
-  'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80', // Web Studio Layout
+  'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80', // SaaS Web App Landing & Top Menu
+  'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80', // Modern Web Platform & Navigation Tabs
+  'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80', // Product Design UI & Interactive Component Tree
+  'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80', // Web Studio Layout & Sub-sections
 ];
 
 const FINTECH_CRYPTO_UI = [
@@ -43,6 +43,40 @@ const FINTECH_CRYPTO_UI = [
   'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80', // Crypto & Digital Wallet Dashboard
   'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80', // Banking Mobile Screen
 ];
+
+/**
+ * Generates a responsive srcSet string for Unsplash and thum.io URLs
+ */
+export function generateSrcSet(url: string, widths: number[] = [400, 800, 1200, 1600]): string | undefined {
+  if (!url || typeof url !== 'string') return undefined;
+
+  if (url.includes('images.unsplash.com')) {
+    try {
+      return widths
+        .map((w) => {
+          const urlObj = new URL(url);
+          urlObj.searchParams.set('w', w.toString());
+          if (!urlObj.searchParams.has('q')) urlObj.searchParams.set('q', '80');
+          if (!urlObj.searchParams.has('auto')) urlObj.searchParams.set('auto', 'format');
+          return `${urlObj.toString()} ${w}w`;
+        })
+        .join(', ');
+    } catch {
+      return widths.map((w) => `${url.replace(/w=\d+/, `w=${w}`)} ${w}w`).join(', ');
+    }
+  }
+
+  if (url.includes('image.thum.io/get')) {
+    return widths
+      .map((w) => {
+        const resizedUrl = url.replace(/\/width\/\d+\//, `/width/${w}/`);
+        return `${resizedUrl} ${w}w`;
+      })
+      .join(', ');
+  }
+
+  return undefined;
+}
 
 /**
  * Calculates a deterministic integer hash from a string to select a unique image per project
@@ -114,7 +148,7 @@ export function getProjectScreenshots(options: {
     });
   }
 
-  // 1. Captured Vercel Live Deployment Screenshots across multiple viewports
+  // 1. Captured Vercel Live Deployment Screenshots across multiple viewports & internal routes
   if (liveUrl && liveUrl.trim()) {
     let cleanUrl = liveUrl.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
@@ -132,12 +166,26 @@ export function getProjectScreenshots(options: {
       cleanUrl.includes('.org')
     )) {
       const desktopLive = `https://image.thum.io/get/width/1200/noanimate/${cleanUrl}`;
-      const tabletLive = `https://image.thum.io/get/width/900/noanimate/${cleanUrl}`;
       const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url`;
+      
+      // Common sub-routes for inner menus & pages
+      const baseNoSlash = cleanUrl.endsWith('/') ? cleanUrl.slice(0, -1) : cleanUrl;
+      const dashboardLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/dashboard`;
+      const menuLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/menu`;
+      const projectsLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/projects`;
 
       if (!list.includes(desktopLive)) list.push(desktopLive);
       if (!list.includes(microlinkLive)) list.push(microlinkLive);
-      if (!list.includes(tabletLive)) list.push(tabletLive);
+
+      // Add sub-page screenshots based on project domain/type
+      const titleLower = title.toLowerCase();
+      if (titleLower.includes('menu') || titleLower.includes('shop') || titleLower.includes('food') || titleLower.includes('store')) {
+        if (!list.includes(menuLive)) list.push(menuLive);
+      } else if (titleLower.includes('dashboard') || titleLower.includes('analytics') || category === 'Full Stack') {
+        if (!list.includes(dashboardLive)) list.push(dashboardLive);
+      } else {
+        if (!list.includes(projectsLive)) list.push(projectsLive);
+      }
     }
   }
 

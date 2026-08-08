@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
 import { getWebsiteScreenshotUrl, getFallbackScreenshot, getProjectScreenshots } from '../../utils/screenshot';
+import { ResponsiveImage } from '../ResponsiveImage';
 
 interface ProjectFormModalProps {
   isOpen: boolean;
@@ -187,6 +188,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     });
 
     setImages(generatedScreenshots);
+    if (bestImages.length === 0) {
+      setBestImages(generatedScreenshots);
+    }
     if (generatedScreenshots.length > 0 && (!imageUrl || !generatedScreenshots.includes(imageUrl))) {
       setImageUrl(generatedScreenshots[0]);
     }
@@ -612,13 +616,15 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                           }`}
                         >
                           <div className="aspect-video w-full relative overflow-hidden bg-stone-900">
-                            <img
+                            <ResponsiveImage
                               src={img}
                               alt={`Screenshot ${idx + 1}`}
-                              className={`w-full h-full ${fitMode === 'contain' ? 'object-contain p-1 bg-stone-950' : 'object-cover'}`}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = getFallbackScreenshot(category, title, techStackInput.split(','));
-                              }}
+                              type="thumb"
+                              fitMode={fitMode}
+                              fallbackCategory={category}
+                              fallbackTitle={title}
+                              fallbackTechStack={techStackInput.split(',')}
+                              containerClassName="w-full h-full"
                             />
                             <div className="absolute top-1 left-1 flex flex-col gap-1 items-start">
                               {isPrimary && (

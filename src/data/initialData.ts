@@ -106,10 +106,15 @@ export const initialProjects: Project[] = [
       'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80'
     ],
+    bestImages: [
+      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
+    ],
+    fitMode: 'contain',
     featured: true,
     createdAt: '2026-08-01',
     highlights: [
-      '⚡ Live Vercel Production Integration',
+      '⚡ Live Vercel Production Integration & Sub-Page Menu Browser',
       '📷 Multi-Screenshot Live Gallery Carousel & Lightbox View',
       '🤖 Integrated Gemini AI Project Assistant',
       '📱 Android In-Browser Device Emulator'
@@ -131,6 +136,11 @@ export const initialProjects: Project[] = [
       'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
     ],
+    bestImages: [
+      'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80'
+    ],
+    fitMode: 'contain',
     featured: true,
     createdAt: '2026-07-15',
     androidPackageName: 'com.kirlous.fitpulse',
@@ -157,6 +167,11 @@ export const initialProjects: Project[] = [
       'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1542744094-3a31b272c390?auto=format&fit=crop&w=1200&q=80'
     ],
+    bestImages: [
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80'
+    ],
+    fitMode: 'contain',
     featured: true,
     createdAt: '2026-06-20',
     highlights: [

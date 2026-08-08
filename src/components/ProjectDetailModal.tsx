@@ -18,11 +18,17 @@ import {
   Image as ImageIcon,
   Star,
   Crop,
-  Maximize
+  Maximize,
+  RotateCw,
+  Compass,
+  Home,
+  LayoutDashboard,
+  Menu as MenuIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '../types';
 import { getFallbackScreenshot } from '../utils/screenshot';
+import { ResponsiveImage } from './ResponsiveImage';
 
 interface ProjectDetailModalProps {
   project: Project | null;
@@ -41,8 +47,16 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [fitMode, setFitMode] = useState<'contain' | 'cover'>(project?.fitMode || 'contain');
   const [onlyBestShots, setOnlyBestShots] = useState(false);
+  const [viewTab, setViewTab] = useState<'gallery' | 'liveEmbed'>('gallery');
+  const [liveRoutePath, setLiveRoutePath] = useState('');
 
   if (!project) return null;
+
+  const baseLiveUrl = project.liveUrl
+    ? (project.liveUrl.startsWith('http') ? project.liveUrl : `https://${project.liveUrl}`).replace(/\/$/, '')
+    : '';
+
+  const activeIframeUrl = baseLiveUrl ? `${baseLiveUrl}${liveRoutePath}` : '';
 
   const allImages = project.images && project.images.length > 0
     ? project.images
@@ -114,179 +128,290 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Interactive Screenshot Gallery Carousel & View Controls */}
-          <div className="space-y-3">
-            {/* Action Bar: Fit Toggle & Best Shots Filter */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-              <div className="flex items-center gap-2">
-                {bestShots.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setOnlyBestShots(!onlyBestShots);
-                      setActiveImgIndex(0);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
-                      onlyBestShots
-                        ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-md shadow-amber-400/20'
-                        : darkMode
-                        ? 'bg-stone-800 border-stone-700 text-stone-300 hover:text-amber-400'
-                        : 'bg-stone-100 border-amber-200 text-stone-700 hover:text-amber-600'
-                    }`}
-                  >
-                    <Star className={`w-3.5 h-3.5 ${onlyBestShots ? 'fill-stone-950' : 'text-amber-400'}`} />
-                    <span>{onlyBestShots ? '⭐ Showing Best Shots' : `⭐ Filter Best Shots (${bestShots.length})`}</span>
-                  </button>
-                )}
+          {/* Top Tab Controls: Screenshots vs Interactive Live Web & Menus */}
+          <div className="flex items-center gap-2 border-b border-stone-800 pb-2">
+            <button
+              type="button"
+              onClick={() => setViewTab('gallery')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewTab === 'gallery'
+                  ? 'bg-amber-500 text-stone-950 font-extrabold shadow-md'
+                  : 'bg-stone-800/80 text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>📸 Screenshots ({galleryImages.length})</span>
+            </button>
 
-                <span className="text-[11px] text-stone-400">
-                  {galleryImages.length} {galleryImages.length === 1 ? 'Screenshot' : 'Screenshots'}
-                </span>
-              </div>
-
-              {/* Fit Mode Toggle */}
-              <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800">
-                <button
-                  onClick={() => setFitMode('contain')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                    fitMode === 'contain'
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                  title="Shows 100% of screenshot without cutting off top/bottom"
-                >
-                  <Maximize className="w-3 h-3" />
-                  <span>Full View (Contain)</span>
-                </button>
-                <button
-                  onClick={() => setFitMode('cover')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                    fitMode === 'cover'
-                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                  title="Fills frame area completely"
-                >
-                  <Crop className="w-3 h-3" />
-                  <span>Crop Fill (Cover)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Main Screenshot Viewport */}
-            <div className="relative rounded-2xl overflow-hidden aspect-video border border-amber-900/20 group bg-stone-950">
-              <img 
-                src={currentImage} 
-                alt={`${project.title} screenshot ${activeImgIndex + 1}`}
-                className={`w-full h-full transition-all duration-300 cursor-pointer ${
-                  fitMode === 'contain' ? 'object-contain p-2 bg-stone-950' : 'object-cover'
-                }`}
-                onClick={() => setIsLightboxOpen(true)}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-                }}
-              />
-
-              {/* Badges Overlay */}
-              <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
-                {isCurrentBest && (
-                  <div className="px-3 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 text-xs font-mono font-extrabold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
-                    <Star className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
-                    <span>⭐ Best Screenshot</span>
-                  </div>
-                )}
-                {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
-                  <div className="px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Live Vercel Production</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Fullscreen Expand Button */}
+            {baseLiveUrl && (
               <button
-                onClick={() => setIsLightboxOpen(true)}
-                className="absolute top-3 right-3 p-2 rounded-xl bg-stone-900/80 hover:bg-stone-900 text-white border border-stone-700/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
-                title="Expand Fullscreen Screenshot"
+                type="button"
+                onClick={() => setViewTab('liveEmbed')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewTab === 'liveEmbed'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-md'
+                    : 'bg-stone-800/80 text-stone-400 hover:text-amber-400'
+                }`}
               >
-                <Maximize2 className="w-4 h-4" />
+                <Globe className="w-3.5 h-3.5" />
+                <span>🌐 Live Website & Inner Menus (Interactive Embed)</span>
               </button>
-
-              {/* Carousel Navigation Arrows */}
-              {galleryImages.length > 1 && (
-                <>
-                  <button
-                    onClick={handlePrev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
-                    title="Previous screenshot"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleNext}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
-                    title="Next screenshot"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </>
-              )}
-
-              {/* Image Counter & Indicator */}
-              {galleryImages.length > 1 && (
-                <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-stone-900/90 text-stone-200 border border-stone-700 text-[11px] font-mono font-semibold flex items-center gap-1.5 shadow-md backdrop-blur-sm z-10">
-                  <Camera className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{activeImgIndex + 1} / {galleryImages.length} Screenshots</span>
-                </div>
-              )}
-
-              {project.category === 'Android' && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onLaunchAndroidSim(project);
-                  }}
-                  className="absolute bottom-3 right-3 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer z-10"
-                >
-                  <Smartphone className="w-4 h-4" />
-                  <span>Test Android Demo</span>
-                </button>
-              )}
-            </div>
-
-            {/* Thumbnail Strip Gallery */}
-            {galleryImages.length > 1 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 custom-scrollbar">
-                {galleryImages.map((img, idx) => {
-                  const isThumbBest = bestShots.includes(img);
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveImgIndex(idx)}
-                      className={`relative w-20 aspect-video rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                        activeImgIndex === idx
-                          ? 'border-amber-500 ring-2 ring-amber-500/40 scale-105'
-                          : 'border-stone-700/60 opacity-60 hover:opacity-100 hover:border-stone-400'
-                      }`}
-                    >
-                      <img
-                        src={img}
-                        alt={`Thumbnail ${idx + 1}`}
-                        className={`w-full h-full ${fitMode === 'contain' ? 'object-contain p-0.5 bg-stone-950' : 'object-cover'}`}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-                        }}
-                      />
-                      {isThumbBest && (
-                        <span className="absolute top-1 left-1 p-0.5 rounded bg-amber-400 text-stone-950 shadow z-10">
-                          <Star className="w-2.5 h-2.5 fill-stone-950" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
             )}
           </div>
+
+          {viewTab === 'liveEmbed' && baseLiveUrl ? (
+            /* Interactive Live Embedded Browser Window */
+            <div className="space-y-3 bg-stone-950 p-3 rounded-2xl border border-stone-800">
+              {/* Address & Navigation Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-900 p-2 rounded-xl border border-stone-800 text-xs font-mono">
+                <div className="flex items-center gap-2 flex-1 min-w-[200px] bg-stone-950 px-3 py-1.5 rounded-lg border border-stone-800 text-stone-300">
+                  <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate text-[11px] font-bold text-amber-300">{activeIframeUrl}</span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const frame = document.getElementById('project-live-iframe') as HTMLIFrameElement;
+                      if (frame) frame.src = activeIframeUrl;
+                    }}
+                    className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 cursor-pointer"
+                    title="Reload Live View"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <a
+                    href={activeIframeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-amber-500 text-stone-950 font-bold text-[11px] flex items-center gap-1 hover:bg-amber-400 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Open New Tab</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Sub-Page Quick Route Selectors */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono custom-scrollbar">
+                <span className="text-stone-400 shrink-0 font-bold">Quick Route Menus:</span>
+                {[
+                  { label: '🏠 Home', path: '' },
+                  { label: '📊 Dashboard', path: '/dashboard' },
+                  { label: '🍔 Menu / Catalog', path: '/menu' },
+                  { label: '📂 Projects / Gallery', path: '/projects' },
+                  { label: '⚙️ Settings / Profile', path: '/settings' },
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setLiveRoutePath(item.path)}
+                    className={`px-2.5 py-1 rounded-lg shrink-0 border transition-colors cursor-pointer ${
+                      liveRoutePath === item.path
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+                        : 'bg-stone-900 border-stone-800 text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Responsive Embedded iFrame Container */}
+              <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-stone-800 bg-stone-900 shadow-inner">
+                <iframe
+                  id="project-live-iframe"
+                  src={activeIframeUrl}
+                  title={`${project.title} Live Website Browser`}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] font-mono text-stone-400 px-1">
+                <span>💡 You can click menus, scroll, and navigate directly inside the live site frame above!</span>
+                <span className="text-amber-400 font-bold">Vercel Production Embed</span>
+              </div>
+            </div>
+          ) : (
+            /* Interactive Screenshot Gallery Carousel & View Controls */
+            <div className="space-y-3">
+              {/* Action Bar: Fit Toggle & Best Shots Filter */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  {bestShots.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setOnlyBestShots(!onlyBestShots);
+                        setActiveImgIndex(0);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
+                        onlyBestShots
+                          ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-md shadow-amber-400/20'
+                          : darkMode
+                          ? 'bg-stone-800 border-stone-700 text-stone-300 hover:text-amber-400'
+                          : 'bg-stone-100 border-amber-200 text-stone-700 hover:text-amber-600'
+                      }`}
+                    >
+                      <Star className={`w-3.5 h-3.5 ${onlyBestShots ? 'fill-stone-950' : 'text-amber-400'}`} />
+                      <span>{onlyBestShots ? '⭐ Showing Best Shots' : `⭐ Filter Best Shots (${bestShots.length})`}</span>
+                    </button>
+                  )}
+
+                  <span className="text-[11px] text-stone-400">
+                    {galleryImages.length} {galleryImages.length === 1 ? 'Screenshot' : 'Screenshots'}
+                  </span>
+                </div>
+
+                {/* Fit Mode Toggle */}
+                <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800">
+                  <button
+                    onClick={() => setFitMode('contain')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                      fitMode === 'contain'
+                        ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                    title="Shows 100% of screenshot without cutting off top/bottom"
+                  >
+                    <Maximize className="w-3 h-3" />
+                    <span>Full View (Contain)</span>
+                  </button>
+                  <button
+                    onClick={() => setFitMode('cover')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                      fitMode === 'cover'
+                        ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                        : 'text-stone-400 hover:text-stone-200'
+                    }`}
+                    title="Fills frame area completely"
+                  >
+                    <Crop className="w-3 h-3" />
+                    <span>Crop Fill (Cover)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Screenshot Viewport */}
+              <div className="relative rounded-2xl overflow-hidden aspect-video border border-amber-900/20 group bg-stone-950">
+                <ResponsiveImage 
+                  src={currentImage} 
+                  alt={`${project.title} screenshot ${activeImgIndex + 1}`}
+                  type="modal"
+                  fitMode={fitMode}
+                  fallbackCategory={project.category}
+                  fallbackTitle={project.title}
+                  fallbackTechStack={project.techStack}
+                  containerClassName="w-full h-full cursor-pointer"
+                  onClick={() => setIsLightboxOpen(true)}
+                />
+
+                {/* Badges Overlay */}
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
+                  {isCurrentBest && (
+                    <div className="px-3 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 text-xs font-mono font-extrabold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                      <Star className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
+                      <span>⭐ Best Screenshot</span>
+                    </div>
+                  )}
+                  {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
+                    <div className="px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Live Vercel Production</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fullscreen Expand Button */}
+                <button
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="absolute top-3 right-3 p-2 rounded-xl bg-stone-900/80 hover:bg-stone-900 text-white border border-stone-700/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                  title="Expand Fullscreen Screenshot"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+
+                {/* Carousel Navigation Arrows */}
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePrev}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
+                      title="Previous screenshot"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
+                      title="Next screenshot"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+
+                {/* Image Counter & Indicator */}
+                {galleryImages.length > 1 && (
+                  <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-stone-900/90 text-stone-200 border border-stone-700 text-[11px] font-mono font-semibold flex items-center gap-1.5 shadow-md backdrop-blur-sm z-10">
+                    <Camera className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{activeImgIndex + 1} / {galleryImages.length} Screenshots</span>
+                  </div>
+                )}
+
+                {project.category === 'Android' && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onLaunchAndroidSim(project);
+                    }}
+                    className="absolute bottom-3 right-3 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer z-10"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    <span>Test Android Demo</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Thumbnail Strip Gallery */}
+              {galleryImages.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 custom-scrollbar">
+                  {galleryImages.map((img, idx) => {
+                    const isThumbBest = bestShots.includes(img);
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveImgIndex(idx)}
+                        className={`relative w-20 aspect-video rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                          activeImgIndex === idx
+                            ? 'border-amber-500 ring-2 ring-amber-500/40 scale-105'
+                            : 'border-stone-700/60 opacity-60 hover:opacity-100 hover:border-stone-400'
+                        }`}
+                      >
+                        <ResponsiveImage
+                          src={img}
+                          alt={`Thumbnail ${idx + 1}`}
+                          type="thumb"
+                          fitMode={fitMode}
+                          fallbackCategory={project.category}
+                          fallbackTitle={project.title}
+                          fallbackTechStack={project.techStack}
+                          containerClassName="w-full h-full"
+                        />
+                        {isThumbBest && (
+                          <span className="absolute top-1 left-1 p-0.5 rounded bg-amber-400 text-stone-950 shadow z-10">
+                            <Star className="w-2.5 h-2.5 fill-stone-950" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Descriptions */}
           <div className="space-y-3">
@@ -436,16 +561,17 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </div>
 
             {/* Main Fullscreen Image Container */}
-            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden bg-stone-950/80 rounded-2xl border border-stone-800">
-              <img
+            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden bg-stone-950/80 rounded-2xl border border-stone-800 w-full h-[80vh]">
+              <ResponsiveImage
                 src={currentImage}
                 alt={`${project.title} Fullscreen Screenshot`}
-                className={`max-h-[80vh] max-w-full rounded-xl border border-stone-800 shadow-2xl transition-all ${
-                  fitMode === 'contain' ? 'object-contain p-2' : 'object-cover w-full h-full'
-                }`}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-                }}
+                type="full"
+                fitMode={fitMode}
+                fallbackCategory={project.category}
+                fallbackTitle={project.title}
+                fallbackTechStack={project.techStack}
+                containerClassName="w-full h-full"
+                eager
               />
 
               {galleryImages.length > 1 && (
@@ -481,7 +607,16 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                           : 'border-stone-700 opacity-50 hover:opacity-100'
                       }`}
                     >
-                      <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                      <ResponsiveImage
+                        src={img}
+                        alt={`Thumb ${idx + 1}`}
+                        type="thumb"
+                        fitMode="cover"
+                        fallbackCategory={project.category}
+                        fallbackTitle={project.title}
+                        fallbackTechStack={project.techStack}
+                        containerClassName="w-full h-full"
+                      />
                       {isThumbBest && (
                         <span className="absolute top-0.5 left-0.5 p-0.5 rounded bg-amber-400 text-stone-950 shadow z-10">
                           <Star className="w-2 h-2 fill-stone-950" />

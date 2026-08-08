@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ContactMessage, PersonalInfo, Project } from '../../types';
 import { storageService } from '../../services/storageService';
 import { IntegrationsTab } from './IntegrationsTab';
+import { ResponsiveImage } from '../ResponsiveImage';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -353,10 +354,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <img
+                            <ResponsiveImage
                               src={proj.imageUrl}
                               alt={proj.title}
-                              className="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-700"
+                              type="thumb"
+                              fitMode={proj.fitMode || 'cover'}
+                              fallbackCategory={proj.category}
+                              fallbackTitle={proj.title}
+                              fallbackTechStack={proj.techStack}
+                              containerClassName="w-12 h-12 rounded-lg shrink-0 border border-slate-700"
                             />
                             <div>
                               <div className="flex items-center gap-2">

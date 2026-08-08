@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Project, ProjectCategory } from '../types';
 import { getFallbackScreenshot } from '../utils/screenshot';
+import { ResponsiveImage } from './ResponsiveImage';
 
 interface ProjectsProps {
   projects: Project[];
@@ -194,15 +195,16 @@ export const Projects: React.FC<ProjectsProps> = ({
                   <div>
                     {/* Project Image & Overlay */}
                     <div className="relative aspect-video overflow-hidden bg-slate-950">
-                      <img
+                      <ResponsiveImage
                         src={project.imageUrl}
                         alt={project.title}
-                        className={`w-full h-full group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100 ${
-                          project.fitMode === 'contain' ? 'object-contain p-2 bg-slate-950' : 'object-cover'
-                        }`}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-                        }}
+                        type="card"
+                        fitMode={project.fitMode || 'cover'}
+                        fallbackCategory={project.category}
+                        fallbackTitle={project.title}
+                        fallbackTechStack={project.techStack}
+                        containerClassName="w-full h-full"
+                        className="group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
                       />
                       
                       {/* Top Category Badge */}

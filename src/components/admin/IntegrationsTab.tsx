@@ -692,6 +692,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               <img
                 src={ghUser.avatar_url}
                 alt={ghUser.name || ghUser.login}
+                loading="lazy"
+                decoding="async"
                 className="w-12 h-12 rounded-full border-2 border-slate-700 object-cover shrink-0"
               />
               <div>
@@ -731,7 +733,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-slate-950 border-2 border-slate-700 flex items-center justify-center font-bold text-white text-base overflow-hidden shrink-0">
                 {vUser.avatar ? (
-                  <img src={vUser.avatar} alt={vUser.username} className="w-full h-full object-cover" />
+                  <img src={vUser.avatar} alt={vUser.username} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 ) : (
                   <Globe className="w-6 h-6 text-cyan-400" />
                 )}
