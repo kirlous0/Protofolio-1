@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { GitHubRepoItem, IntegrationConfig, Project, VercelProjectItem } from '../../types';
 import { storageService } from '../../services/storageService';
+import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
 
 interface IntegrationsTabProps {
   darkMode: boolean;
@@ -341,18 +342,14 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         console.log('No README found for AI enhancement.');
       }
 
-      // 2. Call Gemini AI route (safe json)
-      const aiData = await safeJsonFetch('/api/ai/enhance-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: repo.name,
-          description: repo.description,
-          category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
-          techStack: [repo.language, ...(repo.topics || [])].filter(Boolean),
-          githubUrl: repo.html_url,
-          readmeContent: readmeText,
-        }),
+      // 2. Call Gemini AI or client-side enhancer (safe guarantee)
+      const enriched = await enhanceProjectWithAI({
+        title: repo.name,
+        description: repo.description,
+        category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
+        techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+        githubUrl: repo.html_url,
+        readmeContent: readmeText,
       });
 
       let liveUrl = repo.homepage || '';
@@ -363,30 +360,24 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         liveUrl = `https://${matchingVercel.targets.production.url}`;
       }
 
-      if (aiData?.success && aiData.data) {
-        const enriched = aiData.data;
-        onImportDraftProject({
-          title: enriched.autoTitle || repo.name,
-          description: enriched.enhancedDescription || repo.description || 'Modern full stack project.',
-          longDescription: enriched.longDescription,
-          category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
-          techStack: enriched.techStack || [repo.language || 'TypeScript'],
-          githubUrl: repo.html_url,
-          liveUrl,
-          imageUrl: repo.language === 'Kotlin'
-            ? 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
-            : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
-          featured: true,
-          highlights: enriched.highlights || [
-            `AI Enriched from repository ${repo.full_name}`,
-            `Stars: ${repo.stargazers_count}`,
-          ],
-          isDraft: true,
-        });
-      } else {
-        // Fallback standard draft
-        handleConvertToDraft(repo);
-      }
+      onImportDraftProject({
+        title: enriched.autoTitle || repo.name,
+        description: enriched.enhancedDescription || repo.description || 'Modern full stack project.',
+        longDescription: enriched.longDescription,
+        category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
+        techStack: enriched.techStack || [repo.language || 'TypeScript'],
+        githubUrl: repo.html_url,
+        liveUrl,
+        imageUrl: repo.language === 'Kotlin'
+          ? 'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
+          : 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+        featured: true,
+        highlights: enriched.highlights || [
+          `AI Enriched from repository ${repo.full_name}`,
+          `Stars: ${repo.stargazers_count}`,
+        ],
+        isDraft: true,
+      });
     } catch (err) {
       console.log('AI enhancement error, falling back to basic draft:', err);
       handleConvertToDraft(repo);
@@ -561,9 +552,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         <div className={`p-5 rounded-2xl border space-y-4 ${
           darkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
         }`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-slate-900 text-slate-200 border border-slate-800">
+              <div className="p-2 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 shrink-0">
                 <Github className="w-5 h-5" />
               </div>
               <div>
@@ -576,40 +567,109 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               </div>
             </div>
 
-            {config.githubToken ? (
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Connected
+            {/* Real-time Status Badge */}
+            {!(config.githubToken && config.githubToken.trim()) ? (
+              <span className="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[10px] font-mono shrink-0">
+                Not Configured
+              </span>
+            ) : (ghLoading || ghUserLoading) ? (
+              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1.5 shrink-0 animate-pulse">
+                <RefreshCw className="w-3 h-3 animate-spin text-amber-400" /> Connecting...
+              </span>
+            ) : ghError ? (
+              <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold flex items-center gap-1 shrink-0">
+                <AlertCircle className="w-3 h-3 text-red-400" /> Auth Failed
+              </span>
+            ) : (ghUser || ghRepos.length > 0) ? (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1 shrink-0">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Connected
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[10px] font-mono">
-                Not Configured
+              <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-mono shrink-0">
+                Token Saved
               </span>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-mono font-semibold text-slate-400">
-              Personal Access Token (repo scope):
+            <label className="text-xs font-mono font-semibold text-slate-400 flex items-center justify-between">
+              <span>Personal Access Token (repo scope):</span>
+              {config.githubToken && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchGitHubUser(config.githubToken!);
+                    fetchGitHubRepos(config.githubToken!);
+                  }}
+                  disabled={ghLoading || ghUserLoading}
+                  className="text-[10px] font-mono text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${ghLoading || ghUserLoading ? 'animate-spin' : ''}`} />
+                  <span>Test Connection</span>
+                </button>
+              )}
             </label>
-            <input
-              type="password"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxx"
-              value={config.githubToken || ''}
-              onChange={(e) => setConfig({ ...config, githubToken: e.target.value })}
-              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:border-slate-500 ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
-              }`}
-            />
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxx"
+                value={config.githubToken || ''}
+                onChange={(e) => setConfig({ ...config, githubToken: e.target.value })}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:border-slate-500 ${
+                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  fetchGitHubUser(config.githubToken || '');
+                  fetchGitHubRepos(config.githubToken || '');
+                }}
+                disabled={!config.githubToken || ghLoading || ghUserLoading}
+                className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono font-bold flex items-center gap-1.5 shrink-0 disabled:opacity-40 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${ghLoading || ghUserLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Test</span>
+              </button>
+            </div>
           </div>
+
+          {/* Connection Status & Debugging Feedback Banner */}
+          {config.githubToken && (
+            <div className="text-[11px] font-mono space-y-1">
+              {ghError ? (
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-bold">GitHub Connection Error:</p>
+                    <p className="text-[10px] opacity-90 break-words">{ghError}</p>
+                    <p className="text-[9px] text-red-300/80 pt-0.5">Tip: Ensure PAT has "repo" scope enabled in GitHub Developer Settings.</p>
+                  </div>
+                </div>
+              ) : (ghUser || ghRepos.length > 0) ? (
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 truncate">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span className="truncate">
+                      Connected {ghUser ? `as @${ghUser.login}` : ''} ({ghRepos.length} Repositories ready)
+                    </span>
+                  </div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold shrink-0">
+                    HTTP 200 OK
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Vercel Credential Box */}
         <div className={`p-5 rounded-2xl border space-y-4 ${
           darkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
         }`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-slate-900 text-slate-200 border border-slate-800">
+              <div className="p-2 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 shrink-0">
                 <Globe className="w-5 h-5" />
               </div>
               <div>
@@ -622,20 +682,35 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               </div>
             </div>
 
-            {config.vercelToken ? (
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Connected
+            {/* Real-time Status Badge */}
+            {!(config.vercelToken && config.vercelToken.trim()) ? (
+              <span className="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[10px] font-mono shrink-0">
+                Not Configured
+              </span>
+            ) : vLoading ? (
+              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1.5 shrink-0 animate-pulse">
+                <RefreshCw className="w-3 h-3 animate-spin text-amber-400" /> Connecting...
+              </span>
+            ) : vError ? (
+              <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold flex items-center gap-1 shrink-0">
+                <AlertCircle className="w-3 h-3 text-red-400" /> Auth Failed
+              </span>
+            ) : vProjects.length > 0 ? (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1 shrink-0">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Connected
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[10px] font-mono">
-                Not Configured
+              <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-mono shrink-0">
+                Token Saved
               </span>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-mono font-semibold text-slate-400">Vercel API Token:</label>
+              <label className="text-xs font-mono font-semibold text-slate-400 flex items-center justify-between">
+                <span>Vercel API Token:</span>
+              </label>
               <input
                 type="password"
                 placeholder="vca_xxxxxxxxxxxx"
@@ -648,17 +723,57 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             </div>
             <div className="space-y-1">
               <label className="text-xs font-mono font-semibold text-slate-400">Team ID (Optional):</label>
-              <input
-                type="text"
-                placeholder="team_xxxxxxxxxxxx"
-                value={config.vercelTeamId || ''}
-                onChange={(e) => setConfig({ ...config, vercelTeamId: e.target.value })}
-                className={`w-full px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:border-slate-500 ${
-                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
-                }`}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="team_xxxxxxxxxxxx"
+                  value={config.vercelTeamId || ''}
+                  onChange={(e) => setConfig({ ...config, vercelTeamId: e.target.value })}
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:border-slate-500 ${
+                    darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => fetchVercelProjects(config.vercelToken || '', config.vercelTeamId)}
+                  disabled={!config.vercelToken || vLoading}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono font-bold flex items-center gap-1.5 shrink-0 disabled:opacity-40 cursor-pointer"
+                  title="Test Vercel API Connection"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${vLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Test</span>
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Connection Status & Debugging Feedback Banner */}
+          {config.vercelToken && (
+            <div className="text-[11px] font-mono space-y-1">
+              {vError ? (
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-bold">Vercel Connection Error:</p>
+                    <p className="text-[10px] opacity-90 break-words">{vError}</p>
+                    <p className="text-[9px] text-red-300/80 pt-0.5">Tip: Check if Personal Access Token is valid and has access to the specified team ID.</p>
+                  </div>
+                </div>
+              ) : vProjects.length > 0 ? (
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 truncate">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span className="truncate">
+                      Connected ({vProjects.length} Vercel Projects loaded)
+                    </span>
+                  </div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold shrink-0">
+                    HTTP 200 OK
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
 
@@ -744,77 +859,79 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 No matching repositories found.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[440px] overflow-y-auto custom-scrollbar pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[520px] overflow-y-auto custom-scrollbar pr-2 pb-4">
                 {filteredRepos.map((repo) => (
                   <div
                     key={repo.id}
-                    className={`p-4 rounded-xl border transition-all hover:border-slate-700 flex flex-col justify-between space-y-3 ${
-                      darkMode ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+                    className={`p-4 sm:p-5 rounded-2xl border transition-all hover:border-slate-700 flex flex-col justify-between space-y-4 ${
+                      darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
                     }`}
                   >
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <Code2 className="w-4 h-4 text-blue-400 shrink-0" />
-                          <h5 className={`font-bold text-xs truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                          <h5 className={`font-bold text-xs sm:text-sm truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
                             {repo.name}
                           </h5>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {repo.private ? (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono flex items-center gap-1 border border-slate-700">
                               <Lock className="w-2.5 h-2.5" /> Private
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-mono">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
                               Public
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {repo.description || 'No description provided for this GitHub repository.'}
                       </p>
+
+                      {/* Repository Language & Stars Stats Bar */}
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pt-1">
+                        {repo.language && (
+                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold border border-slate-700">
+                            {repo.language}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-slate-300 font-semibold">
+                          <Star className="w-3.5 h-3.5 text-amber-400" /> {repo.stargazers_count}
+                        </span>
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <GitFork className="w-3.5 h-3.5 text-slate-500" /> {repo.forks_count}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-800/40 flex items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
-                      <div className="flex items-center gap-3">
-                        {repo.language && (
-                          <span className="text-slate-300 font-bold">{repo.language}</span>
+                    {/* Prominent Action Buttons Row */}
+                    <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2.5">
+                      <button
+                        onClick={() => handleAiEnhanceRepoToDraft(repo)}
+                        disabled={aiGeneratingRepo === repo.name}
+                        className="flex-1 min-w-[120px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50 transition-all"
+                        title="Use Gemini AI to analyze README and auto-generate portfolio metadata"
+                      >
+                        {aiGeneratingRepo === repo.name ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Bot className="w-3.5 h-3.5 text-cyan-200" />
                         )}
-                        <span className="flex items-center gap-0.5">
-                          <Star className="w-3 h-3 text-amber-400" /> {repo.stargazers_count}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <GitFork className="w-3 h-3 text-slate-500" /> {repo.forks_count}
-                        </span>
-                      </div>
+                        <span>AI Enhance & Draft</span>
+                      </button>
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleAiEnhanceRepoToDraft(repo)}
-                          disabled={aiGeneratingRepo === repo.name}
-                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50"
-                          title="Use Gemini AI to analyze README and auto-generate portfolio metadata"
-                        >
-                          {aiGeneratingRepo === repo.name ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Bot className="w-3 h-3 text-cyan-300" />
-                          )}
-                          <span>AI Enhance</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleConvertToDraft(repo)}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[10px] flex items-center gap-1 cursor-pointer"
-                          title="Import repository directly as draft"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Draft</span>
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleConvertToDraft(repo)}
+                        className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-slate-700 shrink-0"
+                        title="Import repository directly as draft"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Quick Draft</span>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -893,7 +1010,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 No Vercel projects found. Ensure your Vercel Token is valid.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[520px] overflow-y-auto custom-scrollbar pr-2 pb-4">
                 {filteredVercel.map((vp) => {
                   const prodUrl = vp.targets?.production?.url ? `https://${vp.targets.production.url}` : null;
                   const deployments = activeDeployments[vp.id] || [];
@@ -902,17 +1019,17 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                   return (
                     <div
                       key={vp.id}
-                      className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 ${
-                        darkMode ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+                      className={`p-4 sm:p-5 rounded-2xl border flex flex-col justify-between space-y-4 ${
+                        darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
                       }`}
                     >
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <h5 className={`font-bold text-xs truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                          <h5 className={`font-bold text-xs sm:text-sm truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
                             {vp.name}
                           </h5>
                           {vp.framework && (
-                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-mono">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono font-bold shrink-0 border border-slate-700">
                               {vp.framework}
                             </span>
                           )}
@@ -923,53 +1040,55 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                             href={prodUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] font-mono text-blue-400 hover:underline flex items-center gap-1 truncate"
+                            className="text-xs font-mono text-blue-400 hover:underline flex items-center gap-1.5 truncate"
                           >
-                            <ExternalLink className="w-3 h-3 shrink-0" />
+                            <ExternalLink className="w-3.5 h-3.5 shrink-0 text-blue-400" />
                             <span className="truncate">{prodUrl}</span>
                           </a>
                         ) : (
-                          <p className="text-[10px] text-slate-500 font-mono">No active production deployment URL</p>
+                          <p className="text-xs text-slate-500 font-mono">No active production deployment URL</p>
                         )}
                       </div>
 
                       {/* Deployments status inspector block */}
                       {deployments.length > 0 && (
-                        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1.5 text-[10px] font-mono">
+                        <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs font-mono">
                           <div className="text-slate-400 flex items-center justify-between">
-                            <span className="flex items-center gap-1 font-bold text-slate-300">
-                              <Activity className="w-3 h-3 text-emerald-400" /> Latest Deployment
+                            <span className="flex items-center gap-1.5 font-bold text-slate-300">
+                              <Activity className="w-3.5 h-3.5 text-emerald-400" /> Deployment Status
                             </span>
-                            <span className={`px-1.5 py-0.2 rounded font-bold ${
-                              deployments[0].state === 'READY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                              deployments[0].state === 'READY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                             }`}>
                               {deployments[0].state}
                             </span>
                           </div>
-                          <p className="text-slate-400 truncate">
+                          <p className="text-slate-400 truncate text-[11px]">
                             Commit: {deployments[0].meta?.githubCommitMessage || deployments[0].meta?.gitCommitMessage || 'Production deployment'}
                           </p>
                         </div>
                       )}
 
-                      <div className="pt-2 border-t border-slate-800/40 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
+                      {/* Clear, Spacious Action Buttons Row */}
+                      <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
                             onClick={() => fetchVercelDeployments(vp.id)}
                             disabled={isLoadingDep}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-800 text-slate-300 hover:bg-slate-800 text-[10px] font-mono flex items-center gap-1 cursor-pointer"
+                            className="px-3 py-2 rounded-xl border border-slate-700 text-slate-200 hover:bg-slate-800 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                             title="Inspect live build history and logs"
                           >
-                            <RefreshCw className={`w-3 h-3 ${isLoadingDep ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDep ? 'animate-spin text-blue-400' : ''}`} />
                             <span>Builds</span>
                           </button>
 
                           {prodUrl && (
                             <button
                               onClick={() => setLinkingVercelUrl(prodUrl)}
-                              className="px-2.5 py-1.5 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                              className="px-3 py-2 rounded-xl border border-slate-700 text-blue-400 hover:bg-slate-800 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                              title="Link live URL to portfolio project"
                             >
-                              <Link2 className="w-3 h-3 text-blue-400" />
+                              <Link2 className="w-3.5 h-3.5" />
                               <span>Link URL</span>
                             </button>
                           )}
@@ -988,9 +1107,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                               isDraft: true,
                             });
                           }}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-700 shrink-0"
                         >
-                          <Sparkles className="w-3 h-3 text-blue-400" />
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                           <span>Import Draft</span>
                         </button>
                       </div>

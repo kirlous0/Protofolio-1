@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, CheckCircle2, AlertCircle, Search, Layers, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
+import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
 
 interface ProjectFormModalProps {
   isOpen: boolean;
@@ -119,9 +120,12 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ githubUrl }),
         });
-        const ghData = await ghRes.json();
-        if (ghData.success && ghData.content) {
-          readmeSnippet = ghData.content;
+        const contentType = ghRes.headers.get('content-type') || '';
+        if (ghRes.ok && contentType.includes('application/json')) {
+          const ghData = await ghRes.json();
+          if (ghData.success && ghData.content) {
+            readmeSnippet = ghData.content;
+          }
         }
       } catch (e) {
         console.log('GitHub README fetch optional failed, proceeding with current inputs.');
@@ -129,28 +133,19 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     }
 
     try {
-      const res = await fetch('/api/ai/enhance-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description,
-          techStack: techStackInput,
-          category,
-          githubUrl,
-          readmeContent: readmeSnippet || longDescription,
-        }),
+      const enhancement = await enhanceProjectWithAI({
+        title,
+        description,
+        techStack: techStackInput,
+        category,
+        githubUrl,
+        readmeContent: readmeSnippet || longDescription,
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to generate AI metadata.');
-      }
-
-      setAiSuggestion(data.data);
+      setAiSuggestion(enhancement);
       setShowAiModal(true);
     } catch (err: any) {
-      setAiError(err.message || 'AI generation failed. Please check server logs.');
+      setAiError(err.message || 'AI generation failed. Please check inputs.');
     } finally {
       setAiLoading(false);
     }
