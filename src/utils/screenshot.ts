@@ -69,13 +69,50 @@ export function generateSrcSet(url: string, widths: number[] = [400, 800, 1200, 
   if (url.includes('image.thum.io/get')) {
     return widths
       .map((w) => {
-        const resizedUrl = url.replace(/\/width\/\d+\//, `/width/${w}/`);
+        let resizedUrl = url.replace(/\/width\/\d+\//, `/width/${w}/`);
+        if (!resizedUrl.includes('/wait/')) {
+          resizedUrl = resizedUrl.replace('/get/', `/get/wait/4/refresh/`);
+        }
         return `${resizedUrl} ${w}w`;
       })
       .join(', ');
   }
 
   return undefined;
+}
+
+/**
+ * Ensures live screenshot URLs include a 4-second delay and forced refresh
+ * to allow entrance animations, text fade-ins, and 3D scenes to finish rendering.
+ */
+export function ensureLiveScreenshotDelay(url: string, delaySeconds: number = 4): string {
+  if (!url || typeof url !== 'string') return url;
+
+  if (url.includes('image.thum.io/get')) {
+    let clean = url;
+    if (!clean.includes('/wait/')) {
+      clean = clean.replace('/get/', `/get/crop/800/wait/${delaySeconds}/refresh/`);
+    } else {
+      clean = clean.replace(/\/wait\/\d+\//, `/wait/${delaySeconds}/`);
+      if (!clean.includes('/refresh/')) {
+        clean = clean.replace(`/wait/${delaySeconds}/`, `/wait/${delaySeconds}/refresh/`);
+      }
+    }
+    return clean;
+  }
+
+  if (url.includes('api.microlink.io')) {
+    try {
+      const urlObj = new URL(url);
+      urlObj.searchParams.set('waitForTimeout', (delaySeconds * 1000).toString());
+      urlObj.searchParams.set('force', 'true');
+      return urlObj.toString();
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
 }
 
 /**
@@ -134,21 +171,52 @@ export function getProjectScreenshots(options: {
   const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [], imageUrl, existingImages } = options;
   const list: string[] = [];
 
-  // 1. Preserve initial primary image if valid (and not an automated thum/microlink snapshot that might be dark)
-  if (imageUrl && imageUrl.trim()) {
-    list.push(imageUrl.trim());
+  // 1. Captured Live Deployment Screenshots with 4s delay & forced refresh (bypasses initial dark state & animation delays)
+  if (liveUrl && liveUrl.trim()) {
+    let cleanUrl = liveUrl.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    if (!cleanUrl.includes('github.com/') && (
+      cleanUrl.includes('.vercel.app') ||
+      cleanUrl.includes('.vercel.dev') ||
+      cleanUrl.includes('.app') ||
+      cleanUrl.includes('.com') ||
+      cleanUrl.includes('.io') ||
+      cleanUrl.includes('.dev') ||
+      cleanUrl.includes('.net') ||
+      cleanUrl.includes('.org')
+    )) {
+      const thumLive = `https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/${cleanUrl}`;
+      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=4000&force=true`;
+      
+      list.push(thumLive);
+      list.push(microlinkLive);
+    }
   }
 
-  // 2. Preserve existing array of images
+  // 2. Preserve initial primary image if valid and updated with delay if applicable
+  if (imageUrl && imageUrl.trim()) {
+    const updatedPrimary = ensureLiveScreenshotDelay(imageUrl.trim(), 4);
+    if (!list.includes(updatedPrimary)) {
+      list.push(updatedPrimary);
+    }
+  }
+
+  // 3. Preserve existing array of images
   if (Array.isArray(existingImages)) {
     existingImages.forEach((img) => {
-      if (img && img.trim() && !list.includes(img.trim())) {
-        list.push(img.trim());
+      if (img && img.trim()) {
+        const updatedImg = ensureLiveScreenshotDelay(img.trim(), 4);
+        if (!list.includes(updatedImg)) {
+          list.push(updatedImg);
+        }
       }
     });
   }
 
-  // 3. Curated HD UI Mockups matching domain (Guarantees crisp typography, menus & full interface)
+  // 4. Curated HD UI Mockups matching domain
   const titleLower = title.toLowerCase();
   const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
   const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
@@ -174,7 +242,26 @@ export function getProjectScreenshots(options: {
     }
   });
 
-  // 4. Captured Vercel Live Deployment Screenshots across multiple viewports & internal routes
+  if (list.length === 0) {
+    list.push(getFallbackScreenshot(category, title, techStack));
+  }
+
+  return list;
+}
+
+/**
+ * Auto-generates a live website screenshot from Vercel deployments or web platforms.
+ * Uses 4 seconds delay & forced refresh to capture full page after entrance animations.
+ */
+export function getWebsiteScreenshotUrl(options: {
+  liveUrl?: string;
+  githubUrl?: string;
+  category?: 'Web' | 'Android' | 'Full Stack';
+  title?: string;
+  techStack?: string[];
+}): string {
+  const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [] } = options;
+
   if (liveUrl && liveUrl.trim()) {
     let cleanUrl = liveUrl.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
@@ -191,35 +278,10 @@ export function getProjectScreenshots(options: {
       cleanUrl.includes('.net') ||
       cleanUrl.includes('.org')
     )) {
-      const desktopLive = `https://image.thum.io/get/width/1200/wait/3/${cleanUrl}`;
-      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=3000`;
-      
-      if (!list.includes(desktopLive)) list.push(desktopLive);
-      if (!list.includes(microlinkLive)) list.push(microlinkLive);
+      return `https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/${cleanUrl}`;
     }
   }
 
-  if (list.length === 0) {
-    list.push(getFallbackScreenshot(category, title, techStack));
-  }
-
-  return list;
-}
-
-/**
- * Auto-generates a live website screenshot from Vercel deployments or web platforms.
- * Prioritizes crisp HD UI representations over automated dark animation API captures.
- */
-export function getWebsiteScreenshotUrl(options: {
-  liveUrl?: string;
-  githubUrl?: string;
-  category?: 'Web' | 'Android' | 'Full Stack';
-  title?: string;
-  techStack?: string[];
-}): string {
-  const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [] } = options;
-
-  // Select curated HD UI image based on domain & title hash (guarantees text & UI details are visible)
   return getFallbackScreenshot(category, title, techStack);
 }
 

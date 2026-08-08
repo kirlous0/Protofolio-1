@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateSrcSet, getFallbackScreenshot } from '../utils/screenshot';
+import { generateSrcSet, getFallbackScreenshot, ensureLiveScreenshotDelay } from '../utils/screenshot';
 
 export interface ResponsiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -30,12 +30,12 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   ...restProps
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(src);
+  const [imgSrc, setImgSrc] = useState(() => ensureLiveScreenshotDelay(src, 4));
   const [hasError, setHasError] = useState(false);
 
   // Sync state if src prop changes
   React.useEffect(() => {
-    setImgSrc(src);
+    setImgSrc(ensureLiveScreenshotDelay(src, 4));
     setHasError(false);
     setIsLoaded(false);
   }, [src]);
@@ -56,6 +56,19 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (!hasError) {
       setHasError(true);
+      // Try Microlink with 4s delay if thum.io fails
+      if (imgSrc.includes('image.thum.io')) {
+        const urlMatch = imgSrc.match(/https?:\/\/(?!image\.thum\.io)[^\s]+/);
+        if (urlMatch) {
+          const targetUrl = urlMatch[0];
+          const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=4000&force=true`;
+          setImgSrc(microlinkUrl);
+          return;
+        }
+      }
+      const fallback = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
+      setImgSrc(fallback);
+    } else {
       const fallback = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
       setImgSrc(fallback);
     }
