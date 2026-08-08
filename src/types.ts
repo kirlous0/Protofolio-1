@@ -19,6 +19,7 @@ export interface Project {
   githubUrl: string;
   liveUrl?: string;
   imageUrl: string;
+  images?: string[];
   featured: boolean;
   createdAt: string;
   highlights?: string[];
@@ -87,6 +88,7 @@ export interface AIEnhancementResponse {
   highlights: string[];
   seoMetadata: SEOMetadata;
   screenshotUrl?: string;
+  images?: string[];
 }
 
 export interface SkillItem {

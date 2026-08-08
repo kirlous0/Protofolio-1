@@ -85,6 +85,96 @@ export function getFallbackScreenshot(category?: string, title?: string, techSta
 }
 
 /**
+ * Auto-generates multiple high-definition, domain-specific UI screenshots
+ * and live website previews from Vercel deployments and web platforms.
+ */
+export function getProjectScreenshots(options: {
+  liveUrl?: string;
+  githubUrl?: string;
+  category?: 'Web' | 'Android' | 'Full Stack';
+  title?: string;
+  techStack?: string[];
+  imageUrl?: string;
+  existingImages?: string[];
+}): string[] {
+  const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [], imageUrl, existingImages } = options;
+  const list: string[] = [];
+
+  // Preserve initial primary image if valid
+  if (imageUrl && imageUrl.trim()) {
+    list.push(imageUrl.trim());
+  }
+
+  // Preserve existing array of images
+  if (Array.isArray(existingImages)) {
+    existingImages.forEach((img) => {
+      if (img && img.trim() && !list.includes(img.trim())) {
+        list.push(img.trim());
+      }
+    });
+  }
+
+  // 1. Captured Vercel Live Deployment Screenshots across multiple viewports
+  if (liveUrl && liveUrl.trim()) {
+    let cleanUrl = liveUrl.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    if (!cleanUrl.includes('github.com/') && (
+      cleanUrl.includes('.vercel.app') ||
+      cleanUrl.includes('.vercel.dev') ||
+      cleanUrl.includes('.app') ||
+      cleanUrl.includes('.com') ||
+      cleanUrl.includes('.io') ||
+      cleanUrl.includes('.dev') ||
+      cleanUrl.includes('.net') ||
+      cleanUrl.includes('.org')
+    )) {
+      const desktopLive = `https://image.thum.io/get/width/1200/crop/800/noanimate/${cleanUrl}`;
+      const tabletLive = `https://image.thum.io/get/width/900/crop/800/noanimate/${cleanUrl}`;
+      const mobileLive = `https://image.thum.io/get/width/600/crop/900/noanimate/${cleanUrl}`;
+
+      if (!list.includes(desktopLive)) list.push(desktopLive);
+      if (!list.includes(tabletLive)) list.push(tabletLive);
+      if (!list.includes(mobileLive)) list.push(mobileLive);
+    }
+  }
+
+  // 2. Curated HD UI Mockups matching domain
+  const titleLower = title.toLowerCase();
+  const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
+  const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
+  const hash = getDeterministicHash(seedString);
+
+  let pool = SAAS_WEB_PLATFORM_UI;
+  if (category === 'Android' || titleLower.includes('android') || stackStr.includes('kotlin') || stackStr.includes('flutter')) {
+    pool = MOBILE_ANDROID_UI;
+  } else if (titleLower.includes('ai') || titleLower.includes('gpt') || titleLower.includes('gemini') || stackStr.includes('gemini')) {
+    pool = AI_GENAI_UI;
+  } else if (titleLower.includes('shop') || titleLower.includes('store') || titleLower.includes('e-commerce') || titleLower.includes('ecommerce')) {
+    pool = ECOMMERCE_SHOPPING_UI;
+  } else if (titleLower.includes('dashboard') || titleLower.includes('admin') || titleLower.includes('analytics') || category === 'Full Stack') {
+    pool = DASHBOARD_ANALYTICS_UI;
+  } else if (titleLower.includes('pay') || titleLower.includes('finance') || titleLower.includes('crypto') || titleLower.includes('bank')) {
+    pool = FINTECH_CRYPTO_UI;
+  }
+
+  pool.forEach((item, idx) => {
+    const selected = pool[(hash + idx) % pool.length];
+    if (!list.includes(selected) && list.length < 5) {
+      list.push(selected);
+    }
+  });
+
+  if (list.length === 0) {
+    list.push(getFallbackScreenshot(category, title, techStack));
+  }
+
+  return list;
+}
+
+/**
  * Auto-generates a live website screenshot from Vercel deployments or web platforms.
  */
 export function getWebsiteScreenshotUrl(options: {

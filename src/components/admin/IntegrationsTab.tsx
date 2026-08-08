@@ -25,7 +25,7 @@ import {
 import { GitHubRepoItem, IntegrationConfig, Project, VercelProjectItem } from '../../types';
 import { storageService } from '../../services/storageService';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
-import { getWebsiteScreenshotUrl } from '../../utils/screenshot';
+import { getWebsiteScreenshotUrl, getProjectScreenshots } from '../../utils/screenshot';
 
 interface IntegrationsTabProps {
   darkMode: boolean;
@@ -507,6 +507,14 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       techStack: [vp.framework || 'React', 'Vercel'],
     });
 
+    const autoScreenshots = getProjectScreenshots({
+      liveUrl,
+      title: vp.name,
+      category: 'Web',
+      techStack: [vp.framework || 'React', 'Vercel'],
+      imageUrl: autoScreenshot,
+    });
+
     onImportDraftProject({
       title: vp.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
       description: `Production web application deployed on Vercel${vp.framework ? ` using ${vp.framework}` : ''}.`,
@@ -514,6 +522,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       techStack: [vp.framework || 'Next.js', 'Vercel', 'TypeScript'],
       liveUrl,
       imageUrl: autoScreenshot,
+      images: autoScreenshots,
       featured: true,
       highlights: [
         `Hosted on Vercel Platform`,
@@ -587,6 +596,15 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
     });
 
+    const autoScreenshots = getProjectScreenshots({
+      liveUrl,
+      githubUrl: repo.html_url,
+      category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
+      title: repo.name,
+      techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+      imageUrl: autoScreenshot,
+    });
+
     const draft: Partial<Project> = {
       title: repo.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
       description: repo.description || `Modern ${repo.language || 'Full Stack'} application built by Kirlous Wael.`,
@@ -595,6 +613,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       githubUrl: repo.html_url,
       liveUrl,
       imageUrl: autoScreenshot,
+      images: autoScreenshots,
       featured: repo.stargazers_count > 0,
       highlights: [
         `Auto-imported from GitHub repository ${repo.full_name}`,

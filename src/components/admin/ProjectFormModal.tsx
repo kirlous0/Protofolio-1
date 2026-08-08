@@ -3,7 +3,7 @@ import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, Che
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
-import { getWebsiteScreenshotUrl, getFallbackScreenshot } from '../../utils/screenshot';
+import { getWebsiteScreenshotUrl, getFallbackScreenshot, getProjectScreenshots } from '../../utils/screenshot';
 
 interface ProjectFormModalProps {
   isOpen: boolean;
@@ -28,6 +28,8 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [githubUrl, setGithubUrl] = useState('');
   const [liveUrl, setLiveUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [newCustomImageUrl, setNewCustomImageUrl] = useState('');
   const [featured, setFeatured] = useState(false);
   const [androidPackageName, setAndroidPackageName] = useState('');
   const [highlightsInput, setHighlightsInput] = useState('');
@@ -66,6 +68,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setGithubUrl(projectToEdit.githubUrl);
       setLiveUrl(projectToEdit.liveUrl || '');
       setImageUrl(projectToEdit.imageUrl);
+      setImages(projectToEdit.images && projectToEdit.images.length > 0 ? projectToEdit.images : (projectToEdit.imageUrl ? [projectToEdit.imageUrl] : []));
       setFeatured(projectToEdit.featured);
       setAndroidPackageName(projectToEdit.androidPackageName || '');
       setHighlightsInput((projectToEdit.highlights || []).join('\n'));
@@ -165,19 +168,25 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setLiveUrl(cleanLiveUrl);
     }
 
-    const generatedUrl = getWebsiteScreenshotUrl({
+    const generatedScreenshots = getProjectScreenshots({
       liveUrl: cleanLiveUrl,
       githubUrl,
       category,
       title,
       techStack: techStackInput.split(',').map(s => s.trim()).filter(Boolean),
+      imageUrl,
+      existingImages: images,
     });
-    setImageUrl(generatedUrl);
+
+    setImages(generatedScreenshots);
+    if (generatedScreenshots.length > 0 && (!imageUrl || !generatedScreenshots.includes(imageUrl))) {
+      setImageUrl(generatedScreenshots[0]);
+    }
 
     if (cleanLiveUrl.includes('vercel')) {
-      setAiSuccessMsg('⚡ Live screenshot URL captured from Vercel deployment!');
+      setAiSuccessMsg(`⚡ Captured ${generatedScreenshots.length} Live Screenshots from Vercel deployment!`);
     } else {
-      setAiSuccessMsg('📷 Live website screenshot URL auto-generated!');
+      setAiSuccessMsg(`📷 Auto-generated ${generatedScreenshots.length} project UI screenshots!`);
     }
     setTimeout(() => setAiSuccessMsg(''), 3000);
   };
@@ -196,6 +205,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     }
     if (aiSuggestion.screenshotUrl) {
       setImageUrl(aiSuggestion.screenshotUrl);
+    }
+    if (aiSuggestion.images && aiSuggestion.images.length > 0) {
+      setImages(aiSuggestion.images);
     }
 
     if (aiSuggestion.seoMetadata) {
@@ -234,6 +246,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       .map(k => k.trim())
       .filter(Boolean);
 
+    const finalImages = images.length > 0 ? images : (imageUrl ? [imageUrl] : []);
+    const finalPrimaryImage = imageUrl || (finalImages[0] || '');
+
     const seoMetadata: SEOMetadata | undefined = metaTitle || metaDescription ? {
       metaTitle: metaTitle || title,
       metaDescription: metaDescription || description,
@@ -251,7 +266,8 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       techStack,
       githubUrl,
       liveUrl,
-      imageUrl,
+      imageUrl: finalPrimaryImage,
+      images: finalImages,
       featured,
       androidPackageName: category === 'Android' ? androidPackageName : undefined,
       highlights,
@@ -468,67 +484,156 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
               </div>
             )}
 
-            {/* Image URL & Presets & Auto-Screenshot */}
-            <div className="space-y-2">
+            {/* Image URL & Multi-Screenshot Gallery */}
+            <div className="space-y-3 p-4 rounded-2xl border border-amber-500/20 bg-stone-900/30">
               <div className="flex items-center justify-between gap-2">
-                <label className="font-mono font-bold">Image Preview URL / Screenshot *</label>
+                <div>
+                  <label className="font-mono font-bold text-sm flex items-center gap-1.5 text-amber-400">
+                    <Camera className="w-4 h-4 text-cyan-400" />
+                    <span>Project Screenshots & Gallery ({images.length}) *</span>
+                  </label>
+                  <p className="text-[11px] text-stone-400">
+                    Add multiple screenshots captured from Vercel deployment or custom URLs.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={handleAutoGenerateScreenshot}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shadow-sm transition-transform active:scale-95"
-                  title="Auto-capture live website screenshot from Live URL or GitHub"
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shadow-md transition-transform active:scale-95 shrink-0"
+                  title="Auto-capture multiple HD screenshots from Vercel deployment or web platform"
                 >
                   <Camera className="w-3.5 h-3.5 text-cyan-200" />
-                  <span>📷 Auto Website Screenshot</span>
+                  <span>📷 Auto-Capture Screenshots</span>
                 </button>
               </div>
 
-              <input
-                type="url"
-                required
-                placeholder="https://..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className={`w-full px-3 py-2.5 rounded-xl border focus:outline-none focus:border-amber-500 ${
-                  darkMode ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-amber-200 text-stone-900'
-                }`}
-              />
+              {/* Primary Image Input */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-mono font-semibold text-stone-300">Cover / Primary Image URL:</span>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://..."
+                  value={imageUrl}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    if (e.target.value && !images.includes(e.target.value)) {
+                      setImages([e.target.value, ...images]);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-amber-500 ${
+                    darkMode ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-amber-200 text-stone-900'
+                  }`}
+                />
+              </div>
 
-              {/* Live Thumbnail Image Preview */}
-              {imageUrl && (
-                <div className={`p-2.5 rounded-xl border flex items-center gap-3 ${
-                  darkMode ? 'bg-stone-950/80 border-stone-800' : 'bg-stone-100 border-amber-200'
-                }`}>
-                  <div className="w-20 h-14 rounded-lg overflow-hidden bg-stone-900 shrink-0 border border-stone-700 relative">
-                    <img
-                      src={imageUrl}
-                      alt="Preview screenshot"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = getFallbackScreenshot(category, title, techStackInput.split(','));
-                      }}
-                    />
-                  </div>
-                  <div className="text-[11px] min-w-0 space-y-0.5">
-                    <p className="font-bold text-amber-500 flex items-center gap-1">
-                      <Image className="w-3.5 h-3.5" />
-                      <span>Live Image Preview Active</span>
-                    </p>
-                    <p className="text-stone-400 font-mono text-[10px] truncate max-w-[320px]">
-                      {imageUrl}
-                    </p>
+              {/* Multi-Screenshot Gallery Thumbnails Grid */}
+              {images.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[11px] font-mono font-semibold text-stone-400">Active Gallery Screenshots:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {images.map((img, idx) => {
+                      const isPrimary = img === imageUrl;
+                      return (
+                        <div
+                          key={idx}
+                          className={`group relative rounded-xl border overflow-hidden bg-stone-950 transition-all ${
+                            isPrimary ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-stone-800 hover:border-stone-600'
+                          }`}
+                        >
+                          <div className="aspect-video w-full relative overflow-hidden bg-stone-900">
+                            <img
+                              src={img}
+                              alt={`Screenshot ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = getFallbackScreenshot(category, title, techStackInput.split(','));
+                              }}
+                            />
+                            {isPrimary && (
+                              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-amber-500 text-stone-950 font-mono font-bold text-[9px] shadow">
+                                Cover
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Hover Actions */}
+                          <div className="p-1.5 bg-stone-900/90 flex items-center justify-between gap-1 border-t border-stone-800">
+                            <button
+                              type="button"
+                              onClick={() => setImageUrl(img)}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold cursor-pointer transition-colors ${
+                                isPrimary ? 'bg-amber-500/20 text-amber-400' : 'bg-stone-800 text-stone-300 hover:bg-amber-600 hover:text-white'
+                              }`}
+                            >
+                              {isPrimary ? 'Primary' : 'Make Cover'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const filtered = images.filter((_, i) => i !== idx);
+                                setImages(filtered);
+                                if (isPrimary && filtered.length > 0) {
+                                  setImageUrl(filtered[0]);
+                                }
+                              }}
+                              className="p-1 rounded bg-rose-950/60 hover:bg-rose-600 text-rose-300 hover:text-white cursor-pointer transition-colors"
+                              title="Remove screenshot"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
+              {/* Add Custom Screenshot URL */}
+              <div className="flex gap-2 pt-1">
+                <input
+                  type="url"
+                  placeholder="Add another image URL (https://...)"
+                  value={newCustomImageUrl}
+                  onChange={(e) => setNewCustomImageUrl(e.target.value)}
+                  className={`flex-1 px-3 py-1.5 rounded-xl border text-xs focus:outline-none focus:border-amber-500 ${
+                    darkMode ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-amber-200 text-stone-900'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newCustomImageUrl.trim()) {
+                      const trimmed = newCustomImageUrl.trim();
+                      if (!images.includes(trimmed)) {
+                        setImages([...images, trimmed]);
+                      }
+                      if (!imageUrl) setImageUrl(trimmed);
+                      setNewCustomImageUrl('');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add</span>
+                </button>
+              </div>
+
+              {/* Presets */}
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="text-[10px] text-stone-500 font-mono self-center">Presets:</span>
                 {presetImages.map((preset, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setImageUrl(preset.url)}
-                    className="px-2.5 py-1 rounded bg-stone-800 text-stone-300 hover:text-white text-[10px] font-mono cursor-pointer hover:bg-amber-600 transition-colors"
+                    onClick={() => {
+                      setImageUrl(preset.url);
+                      if (!images.includes(preset.url)) {
+                        setImages([preset.url, ...images]);
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded bg-stone-800 text-stone-300 hover:text-white text-[10px] font-mono cursor-pointer hover:bg-amber-600 transition-colors"
                   >
                     {preset.name}
                   </button>

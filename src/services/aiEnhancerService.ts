@@ -1,5 +1,5 @@
 import { AIEnhancementResponse } from '../types';
-import { getWebsiteScreenshotUrl } from '../utils/screenshot';
+import { getWebsiteScreenshotUrl, getProjectScreenshots } from '../utils/screenshot';
 
 export interface AIEnhanceInput {
   title?: string;
@@ -160,13 +160,22 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
     ].slice(0, 8),
   };
 
-  // Auto Screenshot URL
+  // Auto Screenshots Array
   const screenshotUrl = getWebsiteScreenshotUrl({
     liveUrl,
     githubUrl,
     category,
     title: autoTitle,
     techStack: techArray,
+  });
+
+  const images = getProjectScreenshots({
+    liveUrl,
+    githubUrl,
+    category,
+    title: autoTitle,
+    techStack: techArray,
+    imageUrl: screenshotUrl,
   });
 
   return {
@@ -180,12 +189,13 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
     highlights,
     seoMetadata,
     screenshotUrl,
+    images,
   };
 }
 
 /**
  * Safely calls backend AI endpoint or falls back to client generator.
- * Guaranteed response with screenshot URL!
+ * Guaranteed response with screenshot URL and image gallery!
  */
 export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnhancementResponse> {
   try {
@@ -199,7 +209,7 @@ export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnh
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (data.success && data.data) {
-        // Ensure screenshotUrl is present
+        // Ensure screenshotUrl & images are present
         if (!data.data.screenshotUrl) {
           data.data.screenshotUrl = getWebsiteScreenshotUrl({
             liveUrl: input.liveUrl,
@@ -207,6 +217,16 @@ export async function enhanceProjectWithAI(input: AIEnhanceInput): Promise<AIEnh
             category: input.category,
             title: data.data.autoTitle || input.title,
             techStack: data.data.techStack || input.techStack,
+          });
+        }
+        if (!data.data.images || data.data.images.length === 0) {
+          data.data.images = getProjectScreenshots({
+            liveUrl: input.liveUrl,
+            githubUrl: input.githubUrl,
+            category: input.category,
+            title: data.data.autoTitle || input.title,
+            techStack: data.data.techStack || input.techStack,
+            imageUrl: data.data.screenshotUrl,
           });
         }
         return data.data;

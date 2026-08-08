@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   Github, 
@@ -10,7 +10,12 @@ import {
   Sparkles,
   Layers,
   Code,
-  Zap
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '../types';
@@ -29,7 +34,24 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   onLaunchAndroidSim,
   darkMode,
 }) => {
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
   if (!project) return null;
+
+  const galleryImages = project.images && project.images.length > 0
+    ? project.images
+    : [project.imageUrl];
+
+  const currentImage = galleryImages[activeImgIndex] || project.imageUrl;
+
+  const handlePrev = () => {
+    setActiveImgIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setActiveImgIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+  };
 
   return (
     <AnimatePresence>
@@ -78,33 +100,102 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Banner Image */}
-          <div className="relative rounded-xl overflow-hidden aspect-video border border-amber-900/10 group">
-            <img 
-              src={project.imageUrl} 
-              alt={project.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-              }}
-            />
-            {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
-              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>Live Vercel Production</span>
-              </div>
-            )}
-            {project.category === 'Android' && (
-              <button
-                onClick={() => {
-                  onClose();
-                  onLaunchAndroidSim(project);
+          {/* Interactive Screenshot Gallery Carousel */}
+          <div className="space-y-3">
+            <div className="relative rounded-2xl overflow-hidden aspect-video border border-amber-900/20 group bg-stone-950">
+              <img 
+                src={currentImage} 
+                alt={`${project.title} screenshot ${activeImgIndex + 1}`}
+                className="w-full h-full object-cover transition-all duration-300 cursor-pointer"
+                onClick={() => setIsLightboxOpen(true)}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
                 }}
-                className="absolute bottom-4 right-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 hover:scale-105 transition-transform cursor-pointer"
+              />
+
+              {/* Vercel Live Tag */}
+              {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-10">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Live Vercel Production</span>
+                </div>
+              )}
+
+              {/* Fullscreen Expand Button */}
+              <button
+                onClick={() => setIsLightboxOpen(true)}
+                className="absolute top-3 right-3 p-2 rounded-xl bg-stone-900/80 hover:bg-stone-900 text-white border border-stone-700/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                title="Expand Fullscreen Screenshot"
               >
-                <Smartphone className="w-4 h-4" />
-                <span>Test Live Android Demo</span>
+                <Maximize2 className="w-4 h-4" />
               </button>
+
+              {/* Carousel Navigation Arrows */}
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
+                    title="Previous screenshot"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 backdrop-blur-sm transition-all cursor-pointer opacity-80 hover:opacity-100 z-10"
+                    title="Next screenshot"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Image Counter & Indicator */}
+              {galleryImages.length > 1 && (
+                <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-stone-900/90 text-stone-200 border border-stone-700 text-[11px] font-mono font-semibold flex items-center gap-1.5 shadow-md backdrop-blur-sm z-10">
+                  <Camera className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{activeImgIndex + 1} / {galleryImages.length} Screenshots</span>
+                </div>
+              )}
+
+              {project.category === 'Android' && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onLaunchAndroidSim(project);
+                  }}
+                  className="absolute bottom-3 right-3 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer z-10"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>Test Android Demo</span>
+                </button>
+              )}
+            </div>
+
+            {/* Thumbnail Strip Gallery */}
+            {galleryImages.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 custom-scrollbar">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImgIndex(idx)}
+                    className={`relative w-20 aspect-video rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                      activeImgIndex === idx
+                        ? 'border-amber-500 ring-2 ring-amber-500/40 scale-105'
+                        : 'border-stone-700/60 opacity-60 hover:opacity-100 hover:border-stone-400'
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
@@ -200,6 +291,78 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
         </motion.div>
       </div>
+
+      {/* Lightbox Modal for Fullscreen HD Screenshot View */}
+      <AnimatePresence>
+        {isLightboxOpen && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between text-white z-10">
+              <div className="flex items-center gap-3">
+                <Camera className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h4 className="font-bold text-sm text-stone-100">{project.title} — Screenshot Gallery</h4>
+                  <p className="text-xs font-mono text-stone-400">{activeImgIndex + 1} of {galleryImages.length}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="p-2.5 rounded-full bg-stone-800 hover:bg-stone-700 text-white transition-colors cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Main Fullscreen Image Container */}
+            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden">
+              <img
+                src={currentImage}
+                alt={`${project.title} Fullscreen Screenshot`}
+                className="max-h-[82vh] max-w-full object-contain rounded-xl border border-stone-800 shadow-2xl"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
+                }}
+              />
+
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl"
+                  >
+                    <ChevronLeft className="w-7 h-7" />
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl"
+                  >
+                    <ChevronRight className="w-7 h-7" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Lightbox Footer Thumbnail Bar */}
+            {galleryImages.length > 1 && (
+              <div className="flex items-center justify-center gap-2 overflow-x-auto py-2 z-10">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImgIndex(idx)}
+                    className={`w-16 aspect-video rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                      activeImgIndex === idx
+                        ? 'border-amber-400 scale-110 ring-2 ring-amber-400/50'
+                        : 'border-stone-700 opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 };

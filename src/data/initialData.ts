@@ -89,5 +89,82 @@ export const initialServices: ServiceItem[] = [
   }
 ];
 
-export const initialProjects: Project[] = [];
+export const initialProjects: Project[] = [
+  {
+    id: 'proj-1',
+    title: 'Kirlous Developer Portfolio & Studio',
+    description: 'Modern, high-performance portfolio platform featuring live Vercel deployments, Android simulator, and AI project enhancer.',
+    longDescription: 'A modern developer portfolio built for Kirlous Wael with React, TypeScript, and Tailwind CSS. Integrated with GitHub & Vercel live APIs, local persistence, Android app simulator, and AI project analysis.',
+    category: 'Web',
+    techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Vercel', 'Node.js'],
+    githubUrl: 'https://github.com/kirlouswael/portfolio',
+    liveUrl: 'https://kirlous-portfolio.vercel.app',
+    imageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80'
+    ],
+    featured: true,
+    createdAt: '2026-08-01',
+    highlights: [
+      '⚡ Live Vercel Production Integration',
+      '📷 Multi-Screenshot Live Gallery Carousel & Lightbox View',
+      '🤖 Integrated Gemini AI Project Assistant',
+      '📱 Android In-Browser Device Emulator'
+    ]
+  },
+  {
+    id: 'proj-2',
+    title: 'FitPulse Android Fitness & Health Tracker',
+    description: 'Native Android mobile application built with Kotlin and Jetpack Compose featuring offline Room DB and Firebase sync.',
+    longDescription: 'FitPulse is a modern Android application engineered with Kotlin, Jetpack Compose, Coroutines, and Room local SQLite database. Includes workout logging, step tracking, custom charts, and Firebase real-time user authentication.',
+    category: 'Android',
+    techStack: ['Kotlin', 'Jetpack Compose', 'Room DB', 'Firebase', 'Android SDK'],
+    githubUrl: 'https://github.com/kirlouswael/fitpulse-android',
+    liveUrl: 'https://fitpulse-app.vercel.app',
+    imageUrl: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
+    ],
+    featured: true,
+    createdAt: '2026-07-15',
+    androidPackageName: 'com.kirlous.fitpulse',
+    highlights: [
+      '📱 Built with Native Jetpack Compose & Material 3 UI',
+      '💾 100% Offline-First Architecture with Room Database',
+      '🔥 Realtime Firebase Authentication & Cloud Sync',
+      '📊 Interactive Health Analytics & Step Counters'
+    ]
+  },
+  {
+    id: 'proj-3',
+    title: 'Nexus Analytics & E-Commerce Dashboard',
+    description: 'Full-stack enterprise management dashboard with live metrics, sales analytics, and dynamic inventory system.',
+    longDescription: 'Enterprise-grade full-stack dashboard built with Next.js, TypeScript, Express API routes, and PostgreSQL database. Provides real-time revenue analytics, order tracking, product inventory controls, and automated reporting.',
+    category: 'Full Stack',
+    techStack: ['Next.js', 'React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS'],
+    githubUrl: 'https://github.com/kirlouswael/nexus-analytics',
+    liveUrl: 'https://nexus-analytics.vercel.app',
+    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1542744094-3a31b272c390?auto=format&fit=crop&w=1200&q=80'
+    ],
+    featured: true,
+    createdAt: '2026-06-20',
+    highlights: [
+      '📈 Real-time Analytics & KPI Performance Visualizations',
+      '🔐 Secure Role-based JWT Authentication',
+      '⚡ Express & PostgreSQL High-Performance API',
+      '📷 Full Screen Lightbox & Responsive Screenshot Gallery'
+    ]
+  }
+];
 
