@@ -44,6 +44,14 @@ interface GitHubUser {
   html_url: string;
 }
 
+interface VercelUser {
+  id: string;
+  email: string;
+  name?: string;
+  username: string;
+  avatar?: string;
+}
+
 interface VercelDeployment {
   uid: string;
   name: string;
@@ -78,12 +86,48 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const [aiGeneratingRepo, setAiGeneratingRepo] = useState<string | null>(null);
 
   // Vercel state
+  const [vUser, setVUser] = useState<VercelUser | null>(null);
+  const [vUserLoading, setVUserLoading] = useState(false);
   const [vProjects, setVProjects] = useState<VercelProjectItem[]>([]);
   const [vLoading, setVLoading] = useState(false);
   const [vError, setVError] = useState('');
   const [vSearch, setVSearch] = useState('');
   const [activeDeployments, setActiveDeployments] = useState<Record<string, VercelDeployment[]>>({});
   const [loadingDeployments, setLoadingDeployments] = useState<Record<string, boolean>>({});
+  const [syncingAllLinked, setSyncingAllLinked] = useState(false);
+
+  // Correlation helper: Find matching Vercel Project for a GitHub Repo
+  const findMatchingVercelForRepo = (repo: GitHubRepoItem): VercelProjectItem | null => {
+    if (!repo || !vProjects.length) return null;
+    const repoNameLower = repo.name.toLowerCase();
+    const repoFullNameLower = repo.full_name.toLowerCase();
+
+    return vProjects.find((vp) => {
+      const vpNameLower = vp.name.toLowerCase();
+      if (vpNameLower === repoNameLower) return true;
+      if (vp.link && vp.link.repo && vp.link.repo.toLowerCase() === repoFullNameLower) return true;
+      if (vp.link && vp.link.repo && vp.link.repo.toLowerCase().includes(repoNameLower)) return true;
+      if (vpNameLower.replace(/[-_]/g, '') === repoNameLower.replace(/[-_]/g, '')) return true;
+      return false;
+    }) || null;
+  };
+
+  // Correlation helper: Find matching GitHub Repo for a Vercel Project
+  const findMatchingRepoForVercel = (vp: VercelProjectItem): GitHubRepoItem | null => {
+    if (!vp || !ghRepos.length) return null;
+    const vpNameLower = vp.name.toLowerCase();
+    const linkedRepo = vp.link?.repo?.toLowerCase();
+
+    return ghRepos.find((repo) => {
+      const repoNameLower = repo.name.toLowerCase();
+      const repoFullNameLower = repo.full_name.toLowerCase();
+
+      if (linkedRepo && (linkedRepo === repoFullNameLower || linkedRepo.endsWith(`/${repoNameLower}`))) return true;
+      if (repoNameLower === vpNameLower) return true;
+      if (repoNameLower.replace(/[-_]/g, '') === vpNameLower.replace(/[-_]/g, '')) return true;
+      return false;
+    }) || null;
+  };
 
   // Auto-link modal state
   const [linkingVercelUrl, setLinkingVercelUrl] = useState<string | null>(null);
@@ -113,22 +157,54 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       fetchGitHubRepos(config.githubToken);
     }
     if (config.vercelToken) {
+      fetchVercelUser(config.vercelToken);
       fetchVercelProjects(config.vercelToken, config.vercelTeamId);
     }
   };
 
-  // Safe fetch helper to avoid JSON parse errors on HTML responses
+  // Safe fetch helper to parse JSON regardless of HTTP status
   const safeJsonFetch = async (url: string, options?: RequestInit) => {
     try {
       const res = await fetch(url, options);
       const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
+      if (contentType.includes('application/json')) {
         return await res.json();
       }
     } catch (err) {
       console.warn(`Safe fetch warning for ${url}:`, err);
     }
     return null;
+  };
+
+  const fetchVercelUser = async (token: string) => {
+    if (!token) return;
+    setVUserLoading(true);
+    try {
+      const proxyData = await safeJsonFetch('/api/integrations/vercel/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+
+      if (proxyData?.success && proxyData.user) {
+        setVUser(proxyData.user);
+        return;
+      }
+
+      // Direct fallback for user profile
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
+      const directRes = await fetch('https://api.vercel.com/v2/user', {
+        headers: { Authorization: `Bearer ${cleanToken}` },
+      });
+      if (directRes.ok && directRes.headers.get('content-type')?.includes('application/json')) {
+        const uData = await directRes.json();
+        setVUser(uData.user || uData);
+      }
+    } catch (err) {
+      console.log('Error fetching Vercel user profile:', err);
+    } finally {
+      setVUserLoading(false);
+    }
   };
 
   const fetchGitHubUser = async (token: string) => {
@@ -218,6 +294,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     setVLoading(true);
     setVError('');
     try {
+      // Fetch Vercel user profile concurrently
+      fetchVercelUser(token);
+
       // Try backend proxy first
       const proxyData = await safeJsonFetch('/api/integrations/vercel/projects', {
         method: 'POST',
@@ -230,15 +309,22 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         return;
       }
 
+      if (proxyData?.error) {
+        throw new Error(proxyData.error);
+      }
+
       // Fallback: Direct Vercel API fetch
       let url = 'https://api.vercel.com/v9/projects';
-      if (teamId) {
-        url += `?teamId=${encodeURIComponent(teamId.trim())}`;
+      const cleanTeam = teamId?.trim();
+      if (cleanTeam && cleanTeam !== 'undefined' && cleanTeam !== 'null') {
+        url += `?teamId=${encodeURIComponent(cleanTeam)}`;
       }
+
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, '');
 
       const directRes = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token.trim()}`,
+          Authorization: `Bearer ${cleanToken}`,
         },
       });
 
@@ -253,12 +339,12 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
       if (!directRes.ok) {
         const errJson = isJson ? await directRes.json() : null;
-        throw new Error(errJson?.error?.message || `Vercel API returned ${directRes.status}. Check token credentials.`);
+        throw new Error(errJson?.error?.message || errJson?.message || `Vercel API returned ${directRes.status}. Check token credentials.`);
       }
 
       throw new Error('Failed to fetch Vercel projects.');
     } catch (err: any) {
-      setVError(err.message || 'Error connecting to Vercel.');
+      setVError(err.message || 'Error connecting to Vercel API. Please verify your token.');
     } finally {
       setVLoading(false);
     }
@@ -308,7 +394,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     }
   };
 
-  // One-click AI Project Generator from GitHub Repo
+  // One-click AI Project Generator from GitHub Repo & correlated Vercel deployment
   const handleAiEnhanceRepoToDraft = async (repo: GitHubRepoItem) => {
     setAiGeneratingRepo(repo.name);
     try {
@@ -343,46 +429,58 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         console.log('No README found for AI enhancement.');
       }
 
-      // 2. Call Gemini AI or client-side enhancer (safe guarantee)
+      // Find matching Vercel deployment
+      const matchingVercel = findMatchingVercelForRepo(repo);
+      let liveUrl = repo.homepage || '';
+      if (!liveUrl && matchingVercel && matchingVercel.targets?.production?.url) {
+        liveUrl = `https://${matchingVercel.targets.production.url}`;
+      }
+
+      const combinedTechStack = [
+        repo.language,
+        ...(matchingVercel?.framework ? [matchingVercel.framework] : []),
+        ...(repo.topics || []),
+      ].filter(Boolean) as string[];
+
+      // 2. Call Gemini AI with combined GitHub + Vercel metadata
       const enriched = await enhanceProjectWithAI({
         title: repo.name,
         description: repo.description,
         category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
-        techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+        techStack: combinedTechStack,
         githubUrl: repo.html_url,
+        liveUrl,
         readmeContent: readmeText,
       });
-
-      let liveUrl = repo.homepage || '';
-      const matchingVercel = vProjects.find(
-        (v) => v.name.toLowerCase() === repo.name.toLowerCase()
-      );
-      if (!liveUrl && matchingVercel && matchingVercel.targets?.production?.url) {
-        liveUrl = `https://${matchingVercel.targets.production.url}`;
-      }
 
       const autoScreenshot = enriched.screenshotUrl || getWebsiteScreenshotUrl({
         liveUrl,
         githubUrl: repo.html_url,
         category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
         title: repo.name,
-        techStack: [repo.language, ...(repo.topics || [])].filter(Boolean) as string[],
+        techStack: combinedTechStack,
       });
+
+      const highlights = enriched.highlights || [
+        `Source Code: ${repo.full_name}`,
+        `Stars: ${repo.stargazers_count} | Forks: ${repo.forks_count}`,
+      ];
+
+      if (matchingVercel && liveUrl) {
+        highlights.unshift(`Live Vercel Production: ${liveUrl}`);
+      }
 
       onImportDraftProject({
         title: enriched.autoTitle || repo.name,
         description: enriched.enhancedDescription || repo.description || 'Modern full stack project.',
         longDescription: enriched.longDescription,
         category: repo.language === 'Kotlin' || repo.language === 'Java' ? 'Android' : 'Web',
-        techStack: enriched.techStack || [repo.language || 'TypeScript'],
+        techStack: enriched.techStack || (combinedTechStack.length ? combinedTechStack : ['TypeScript', 'React']),
         githubUrl: repo.html_url,
         liveUrl,
         imageUrl: autoScreenshot,
         featured: true,
-        highlights: enriched.highlights || [
-          `AI Enriched from repository ${repo.full_name}`,
-          `Stars: ${repo.stargazers_count}`,
-        ],
+        highlights,
         isDraft: true,
       });
     } catch (err) {
@@ -390,6 +488,55 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       handleConvertToDraft(repo);
     } finally {
       setAiGeneratingRepo(null);
+    }
+  };
+
+  const handleImportVercelWithGitHubToDraft = async (vp: VercelProjectItem) => {
+    const matchingRepo = findMatchingRepoForVercel(vp);
+    if (matchingRepo) {
+      await handleAiEnhanceRepoToDraft(matchingRepo);
+      return;
+    }
+
+    // Fallback if no matching GitHub repo found
+    const liveUrl = vp.targets?.production?.url ? `https://${vp.targets.production.url}` : '';
+    const autoScreenshot = getWebsiteScreenshotUrl({
+      liveUrl,
+      title: vp.name,
+      category: 'Web',
+      techStack: [vp.framework || 'React', 'Vercel'],
+    });
+
+    onImportDraftProject({
+      title: vp.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+      description: `Production web application deployed on Vercel${vp.framework ? ` using ${vp.framework}` : ''}.`,
+      category: 'Web',
+      techStack: [vp.framework || 'Next.js', 'Vercel', 'TypeScript'],
+      liveUrl,
+      imageUrl: autoScreenshot,
+      featured: true,
+      highlights: [
+        `Hosted on Vercel Platform`,
+        `Framework: ${vp.framework || 'Web SPA'}`,
+        `Production URL: ${liveUrl || 'Live App'}`,
+      ],
+      isDraft: true,
+    });
+  };
+
+  const handleSyncAllLinkedProjects = async () => {
+    setSyncingAllLinked(true);
+    try {
+      const linkedRepos = ghRepos.filter((repo) => findMatchingVercelForRepo(repo) !== null);
+      for (const repo of linkedRepos) {
+        await handleAiEnhanceRepoToDraft(repo);
+      }
+      setLinkSuccessMsg(`Successfully imported and AI-enhanced ${linkedRepos.length} correlated GitHub ⚡ Vercel projects!`);
+      setTimeout(() => setLinkSuccessMsg(''), 4000);
+    } catch (err) {
+      console.log('Error syncing all linked projects:', err);
+    } finally {
+      setSyncingAllLinked(false);
     }
   };
 
@@ -516,48 +663,107 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         </button>
       </div>
 
-      {/* Authenticated GitHub Profile Health Card (If Connected) */}
-      {ghUser && (
-        <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
-          darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
-          <div className="flex items-center gap-4">
-            <img
-              src={ghUser.avatar_url}
-              alt={ghUser.name || ghUser.login}
-              className="w-12 h-12 rounded-full border-2 border-slate-700"
-            />
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                  {ghUser.name || ghUser.login}
-                </h4>
-                <a
-                  href={ghUser.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-400 hover:underline flex items-center gap-0.5"
-                >
-                  @{ghUser.login} <ExternalLink className="w-3 h-3" />
-                </a>
+      {/* Authenticated GitHub & Vercel Profile Health Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {ghUser && (
+          <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+            darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-4">
+              <img
+                src={ghUser.avatar_url}
+                alt={ghUser.name || ghUser.login}
+                className="w-12 h-12 rounded-full border-2 border-slate-700 object-cover shrink-0"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                    {ghUser.name || ghUser.login}
+                  </h4>
+                  <a
+                    href={ghUser.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:underline flex items-center gap-0.5"
+                  >
+                    @{ghUser.login} <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-1">{ghUser.bio || 'GitHub Developer Account Connected'}</p>
               </div>
-              <p className="text-xs text-slate-500 line-clamp-1">{ghUser.bio || 'GitHub Developer Account Connected'}</p>
             </div>
+
+            <div className="flex items-center gap-3 font-mono text-xs">
+              <div className="text-center px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                <span className="text-slate-400 text-[10px] block">GitHub Repos</span>
+                <span className="font-bold text-slate-200">{ghRepos.length}</span>
+              </div>
+              <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1 shrink-0">
+                <UserCheck className="w-3.5 h-3.5" /> GitHub
+              </span>
+            </div>
+          </div>
+        )}
+
+        {vUser && (
+          <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+            darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-slate-950 border-2 border-slate-700 flex items-center justify-center font-bold text-white text-base overflow-hidden shrink-0">
+                {vUser.avatar ? (
+                  <img src={vUser.avatar} alt={vUser.username} className="w-full h-full object-cover" />
+                ) : (
+                  <Globe className="w-6 h-6 text-cyan-400" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                    {vUser.name || vUser.username}
+                  </h4>
+                  <span className="text-xs font-mono text-cyan-400">@{vUser.username}</span>
+                </div>
+                <p className="text-xs text-slate-500 line-clamp-1">{vUser.email || 'Vercel Cloud Account Connected'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 font-mono text-xs">
+              <div className="text-center px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                <span className="text-slate-400 text-[10px] block">Vercel Apps</span>
+                <span className="font-bold text-slate-200">{vProjects.length}</span>
+              </div>
+              <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1 shrink-0">
+                <UserCheck className="w-3.5 h-3.5" /> Vercel
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Smart GitHub ⚡ Vercel Correlation Banner */}
+      {ghRepos.length > 0 && vProjects.length > 0 && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-950/80 via-slate-900 to-indigo-950/80 border border-blue-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+              <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                GitHub ⚡ Vercel Auto-Correlation Active
+              </h4>
+            </div>
+            <p className="text-xs text-slate-300">
+              Found <span className="font-bold text-cyan-300">{ghRepos.filter(r => findMatchingVercelForRepo(r)).length} matched projects</span> sharing both GitHub source code and Vercel live deployments.
+            </p>
           </div>
 
-          <div className="flex items-center gap-4 font-mono text-xs">
-            <div className="text-center px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
-              <span className="text-slate-400 text-[10px] block">Public Repos</span>
-              <span className="font-bold text-slate-200">{ghUser.public_repos}</span>
-            </div>
-            <div className="text-center px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
-              <span className="text-slate-400 text-[10px] block">Followers</span>
-              <span className="font-bold text-slate-200">{ghUser.followers}</span>
-            </div>
-            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4" /> Active Token
-            </span>
-          </div>
+          <button
+            onClick={handleSyncAllLinkedProjects}
+            disabled={syncingAllLinked}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncingAllLinked ? 'animate-spin' : ''}`} />
+            <span>{syncingAllLinked ? 'Syncing All Linked Drafts...' : 'Import All Linked GitHub ⚡ Vercel Projects'}</span>
+          </button>
         </div>
       )}
 
@@ -875,81 +1081,98 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[520px] overflow-y-auto custom-scrollbar pr-2 pb-4">
-                {filteredRepos.map((repo) => (
-                  <div
-                    key={repo.id}
-                    className={`p-4 sm:p-5 rounded-2xl border transition-all hover:border-slate-700 flex flex-col justify-between space-y-4 ${
-                      darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Code2 className="w-4 h-4 text-blue-400 shrink-0" />
-                          <h5 className={`font-bold text-xs sm:text-sm truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                            {repo.name}
-                          </h5>
+                {filteredRepos.map((repo) => {
+                  const matchingVercel = findMatchingVercelForRepo(repo);
+
+                  return (
+                    <div
+                      key={repo.id}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all hover:border-slate-700 flex flex-col justify-between space-y-4 ${
+                        darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Code2 className="w-4 h-4 text-blue-400 shrink-0" />
+                            <h5 className={`font-bold text-xs sm:text-sm truncate ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                              {repo.name}
+                            </h5>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {repo.private ? (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono flex items-center gap-1 border border-slate-700">
+                                <Lock className="w-2.5 h-2.5" /> Private
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
+                                Public
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {repo.private ? (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono flex items-center gap-1 border border-slate-700">
-                              <Lock className="w-2.5 h-2.5" /> Private
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                          {repo.description || 'No description provided for this GitHub repository.'}
+                        </p>
+
+                        {/* Correlated Vercel Link Badge */}
+                        {matchingVercel && (
+                          <div className="p-2 rounded-xl bg-gradient-to-r from-blue-950/70 to-slate-900 border border-blue-500/30 text-blue-300 text-[11px] font-mono flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 font-semibold truncate">
+                              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span className="truncate">Vercel: {matchingVercel.targets?.production?.url || matchingVercel.name}</span>
                             </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold">
-                              Public
+                            <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-200 font-bold text-[9px] uppercase shrink-0">
+                              {matchingVercel.framework || 'Live'}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Repository Language & Stars Stats Bar */}
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pt-1">
+                          {repo.language && (
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold border border-slate-700">
+                              {repo.language}
                             </span>
                           )}
+                          <span className="flex items-center gap-1 text-slate-300 font-semibold">
+                            <Star className="w-3.5 h-3.5 text-amber-400" /> {repo.stargazers_count}
+                          </span>
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <GitFork className="w-3.5 h-3.5 text-slate-500" /> {repo.forks_count}
+                          </span>
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                        {repo.description || 'No description provided for this GitHub repository.'}
-                      </p>
+                      {/* Prominent Action Buttons Row */}
+                      <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2.5">
+                        <button
+                          onClick={() => handleAiEnhanceRepoToDraft(repo)}
+                          disabled={aiGeneratingRepo === repo.name}
+                          className="flex-1 min-w-[120px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50 transition-all"
+                          title="Use Gemini AI to analyze README and auto-generate portfolio metadata"
+                        >
+                          {aiGeneratingRepo === repo.name ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Bot className="w-3.5 h-3.5 text-cyan-200" />
+                          )}
+                          <span>{matchingVercel ? 'AI Enhance (GitHub ⚡ Vercel)' : 'AI Enhance & Draft'}</span>
+                        </button>
 
-                      {/* Repository Language & Stars Stats Bar */}
-                      <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pt-1">
-                        {repo.language && (
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold border border-slate-700">
-                            {repo.language}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1 text-slate-300 font-semibold">
-                          <Star className="w-3.5 h-3.5 text-amber-400" /> {repo.stargazers_count}
-                        </span>
-                        <span className="flex items-center gap-1 text-slate-400">
-                          <GitFork className="w-3.5 h-3.5 text-slate-500" /> {repo.forks_count}
-                        </span>
+                        <button
+                          onClick={() => handleConvertToDraft(repo)}
+                          className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-slate-700 shrink-0"
+                          title="Import repository directly as draft"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Quick Draft</span>
+                        </button>
                       </div>
                     </div>
-
-                    {/* Prominent Action Buttons Row */}
-                    <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2.5">
-                      <button
-                        onClick={() => handleAiEnhanceRepoToDraft(repo)}
-                        disabled={aiGeneratingRepo === repo.name}
-                        className="flex-1 min-w-[120px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50 transition-all"
-                        title="Use Gemini AI to analyze README and auto-generate portfolio metadata"
-                      >
-                        {aiGeneratingRepo === repo.name ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Bot className="w-3.5 h-3.5 text-cyan-200" />
-                        )}
-                        <span>AI Enhance & Draft</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleConvertToDraft(repo)}
-                        className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-slate-700 shrink-0"
-                        title="Import repository directly as draft"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Quick Draft</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -1030,6 +1253,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                   const prodUrl = vp.targets?.production?.url ? `https://${vp.targets.production.url}` : null;
                   const deployments = activeDeployments[vp.id] || [];
                   const isLoadingDep = loadingDeployments[vp.id];
+                  const matchingRepo = findMatchingRepoForVercel(vp);
 
                   return (
                     <div
@@ -1062,6 +1286,19 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                           </a>
                         ) : (
                           <p className="text-xs text-slate-500 font-mono">No active production deployment URL</p>
+                        )}
+
+                        {/* Correlated GitHub Repo Badge */}
+                        {matchingRepo && (
+                          <div className="p-2 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950/70 border border-indigo-500/30 text-indigo-200 text-[11px] font-mono flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 font-semibold truncate">
+                              <Github className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span className="truncate">Source Repo: {matchingRepo.full_name}</span>
+                            </span>
+                            <span className="flex items-center gap-1 text-amber-400 font-bold text-[10px] shrink-0">
+                              <Star className="w-3 h-3 fill-amber-400" /> {matchingRepo.stargazers_count}
+                            </span>
+                          </div>
                         )}
                       </div>
 
@@ -1110,22 +1347,12 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                         </div>
 
                         <button
-                          onClick={() => {
-                            onImportDraftProject({
-                              title: vp.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-                              description: `Live web application hosted on Vercel platform.`,
-                              category: 'Web',
-                              techStack: vp.framework ? [vp.framework, 'Vercel', 'TypeScript'] : ['React', 'Vercel'],
-                              liveUrl: prodUrl || undefined,
-                              imageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
-                              featured: true,
-                              isDraft: true,
-                            });
-                          }}
+                          onClick={() => handleImportVercelWithGitHubToDraft(vp)}
                           className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-700 shrink-0"
+                          title="Import project draft with correlated GitHub repository & README"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Import Draft</span>
+                          <span>{matchingRepo ? 'Import Draft (GitHub ⚡ Vercel)' : 'Import Draft'}</span>
                         </button>
                       </div>
                     </div>

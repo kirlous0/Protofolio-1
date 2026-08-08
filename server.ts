@@ -37,28 +37,41 @@ async function startServer() {
 
       const ai = getGenAIClient();
 
-      const promptText = `You are an elite principal engineer and technical developer portfolio strategist for Kirlous Wael (Full Stack Web & Android Developer).
-Your goal is to deeply analyze the provided codebase/README details and synthesize high-converting, professional, and SEO-optimized portfolio metadata.
+      const promptText = `You are a principal software architect and technical lead creating a high-impact portfolio showcase entry for Kirlous Wael (Full Stack Web Developer & Android Developer).
 
-Input Information:
-- Current Title: ${title || "Untitled Project"}
-- Current Short Description: ${description || "None provided"}
+Your goal is to perform a deep, comprehensive technical analysis of this project and generate rich, unique, and deeply descriptive portfolio metadata.
+
+CRITICAL DIRECTIVES:
+1. STRICT UNIQUNESS: Avoid generic boilerplate sentences like "Modern application built with cutting edge technologies". Every sentence MUST be uniquely customized to the specific functional domain, name, tech stack, and README of THIS project.
+2. WHAT IS THE PROJECT: Vividly describe what this software actually is, what domain it serves (e.g. e-commerce platform, real-time analytics dashboard, Android utility, AI companion, social network), its target users, and core value proposition.
+3. KEY FEATURES & CAPABILITIES: Detail 4 to 6 specific, tangible user capabilities and architectural features.
+4. TECHNOLOGIES & ARCHITECTURE: List the actual tech stack and explain clearly why each technology was chosen and its technical responsibility in the system.
+5. TECHNICAL CASE STUDY: Write an exhaustive Markdown case study covering the Problem, Architectural Approach, Key Features, Tech Stack Rationale, and High-Impact Engineering Achievements.
+
+Project Input Data:
+- Project Name: ${title || "Untitled Project"}
+- Existing Description: ${description || "None provided"}
 - Category: ${category || "Web"}
-- Current Tech Stack: ${Array.isArray(techStack) ? techStack.join(", ") : techStack || "None"}
-- GitHub Repository URL: ${githubUrl || "N/A"}
-- Live Demo / Production URL: ${liveUrl || "N/A"}
-${readmeContent ? `- Repository README content snippet:\n"""${readmeContent.slice(0, 4000)}"""` : ""}
+- Tech Stack Input: ${Array.isArray(techStack) ? techStack.join(", ") : techStack || "None"}
+- GitHub Repository: ${githubUrl || "N/A"}
+- Production Live URL: ${liveUrl || "N/A"}
+${readmeContent ? `- Repository README Content:\n"""\n${readmeContent.slice(0, 5000)}\n"""` : ""}
 
-Generate a comprehensive JSON object with:
-1. "autoTitle": A catchy, compelling, and professional title (e.g. "Nile Elegance - E-Commerce Web Platform & Admin Suite").
-2. "problem": An articulate explanation of the engineering problem solved.
-3. "solution": A clear explanation of the architecture, state management, and performance strategy.
-4. "keyFeatures": 4 to 6 key technical features or capabilities.
-5. "enhancedDescription": A crisp 2-sentence summary suitable for portfolio preview cards.
-6. "longDescription": A detailed technical case study in clean Markdown format covering Problem, Architecture, Tech Decisions, and Highlights.
-7. "techStack": Array of key technologies sorted by importance.
-8. "highlights": Array of 3-5 technical accomplishment bullet points.
-9. "seoMetadata": Full search engine optimization fields (metaTitle, metaDescription, ogTitle, ogDescription, ogType, keywords).`;
+Return a structured JSON object:
+1. "autoTitle": An evocative, professional marketing & engineering title (e.g., "Nile Store - E-Commerce Web Engine & Real-Time Merchant Portal").
+2. "problem": A deep 2-3 sentence description of the technical or business challenge solved.
+3. "solution": A deep 2-3 sentence description of the architectural design and state management strategy implemented.
+4. "keyFeatures": Array of 4 to 6 detailed, highly specific feature descriptions.
+5. "enhancedDescription": A vivid 3-sentence executive summary explaining what the project is, its purpose, and core tech stack.
+6. "longDescription": A comprehensive technical case study in clean Markdown format structured with:
+   - ## 🚀 What is ${title || "this project"}?
+   - ## 💡 The Engineering Challenge & Solution
+   - ## ✨ Core Features & Key Capabilities
+   - ## 🛠️ Technology Stack & Architectural Rationale
+   - ## 🏆 High-Impact Engineering Highlights
+7. "techStack": Array of core technologies used, ordered by importance.
+8. "highlights": Array of 4-5 impressive technical achievement bullet points (e.g. "Achieved sub-100ms API response latency using optimistic data caching").
+9. "seoMetadata": Full search engine optimization object (metaTitle, metaDescription, ogTitle, ogDescription, ogType, keywords).`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -234,7 +247,39 @@ Generate a comprehensive JSON object with:
     }
   });
 
-  // Vercel Proxy: Fetch Deployments & Projects
+  // Vercel Proxy: Fetch User Profile
+  app.post("/api/integrations/vercel/user", async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).json({ success: false, error: "Vercel API Token is required." });
+      }
+
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
+
+      const vRes = await fetch("https://api.vercel.com/v2/user", {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          "User-Agent": "KirlousPortfolioApp",
+        },
+      });
+
+      const data = await vRes.json();
+
+      if (!vRes.ok) {
+        return res.status(vRes.status).json({
+          success: false,
+          error: data.error?.message || data.message || `Vercel Auth error (${vRes.status}). Check token credentials.`,
+        });
+      }
+
+      res.json({ success: true, user: data.user || data });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to fetch Vercel user profile." });
+    }
+  });
+
+  // Vercel Proxy: Fetch Projects with automatic teamId fallback
   app.post("/api/integrations/vercel/projects", async (req, res) => {
     try {
       const { token, teamId } = req.body;
@@ -242,26 +287,41 @@ Generate a comprehensive JSON object with:
         return res.status(400).json({ success: false, error: "Vercel API Token is required." });
       }
 
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
+      const cleanTeamId = teamId && typeof teamId === "string" ? teamId.trim() : "";
+
       let url = "https://api.vercel.com/v9/projects";
-      if (teamId) {
-        url += `?teamId=${encodeURIComponent(teamId.trim())}`;
+      if (cleanTeamId && cleanTeamId !== "undefined" && cleanTeamId !== "null") {
+        url += `?teamId=${encodeURIComponent(cleanTeamId)}`;
       }
 
-      const vRes = await fetch(url, {
+      let vRes = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token.trim()}`,
+          Authorization: `Bearer ${cleanToken}`,
+          "User-Agent": "KirlousPortfolioApp",
         },
       });
 
-      if (!vRes.ok) {
-        const errText = await vRes.text();
-        return res.status(vRes.status).json({
-          success: false,
-          error: `Vercel API error (${vRes.status}): ${errText || vRes.statusText}`,
+      // Automatic fallback: If request with teamId failed with 400/401/403/404, retry WITHOUT teamId!
+      if (!vRes.ok && cleanTeamId) {
+        console.log(`Vercel project request with teamId '${cleanTeamId}' returned ${vRes.status}, retrying without teamId...`);
+        vRes = await fetch("https://api.vercel.com/v9/projects", {
+          headers: {
+            Authorization: `Bearer ${cleanToken}`,
+            "User-Agent": "KirlousPortfolioApp",
+          },
         });
       }
 
       const data = await vRes.json();
+
+      if (!vRes.ok) {
+        return res.status(vRes.status).json({
+          success: false,
+          error: data.error?.message || data.message || `Vercel API error (${vRes.status}). Check token credentials.`,
+        });
+      }
+
       res.json({ success: true, projects: data.projects || [] });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || "Failed to fetch Vercel projects." });
@@ -276,29 +336,48 @@ Generate a comprehensive JSON object with:
         return res.status(400).json({ success: false, error: "Vercel API Token is required." });
       }
 
+      const cleanToken = token.trim().replace(/^Bearer\s+/i, "");
+      const cleanTeamId = teamId && typeof teamId === "string" ? teamId.trim() : "";
+      const cleanProjectId = projectId && typeof projectId === "string" ? projectId.trim() : "";
+
       let url = `https://api.vercel.com/v6/deployments?limit=10`;
-      if (projectId) {
-        url += `&projectId=${encodeURIComponent(projectId.trim())}`;
+      if (cleanProjectId) {
+        url += `&projectId=${encodeURIComponent(cleanProjectId)}`;
       }
-      if (teamId) {
-        url += `&teamId=${encodeURIComponent(teamId.trim())}`;
+      if (cleanTeamId && cleanTeamId !== "undefined" && cleanTeamId !== "null") {
+        url += `&teamId=${encodeURIComponent(cleanTeamId)}`;
       }
 
-      const vRes = await fetch(url, {
+      let vRes = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${token.trim()}`,
+          Authorization: `Bearer ${cleanToken}`,
+          "User-Agent": "KirlousPortfolioApp",
         },
       });
 
-      if (!vRes.ok) {
-        const errText = await vRes.text();
-        return res.status(vRes.status).json({
-          success: false,
-          error: `Vercel Deployments error (${vRes.status}): ${errText || vRes.statusText}`,
+      // Fallback: If failed with teamId, retry without teamId
+      if (!vRes.ok && cleanTeamId) {
+        let fallbackUrl = `https://api.vercel.com/v6/deployments?limit=10`;
+        if (cleanProjectId) {
+          fallbackUrl += `&projectId=${encodeURIComponent(cleanProjectId)}`;
+        }
+        vRes = await fetch(fallbackUrl, {
+          headers: {
+            Authorization: `Bearer ${cleanToken}`,
+            "User-Agent": "KirlousPortfolioApp",
+          },
         });
       }
 
       const data = await vRes.json();
+
+      if (!vRes.ok) {
+        return res.status(vRes.status).json({
+          success: false,
+          error: data.error?.message || data.message || `Vercel Deployments error (${vRes.status}).`,
+        });
+      }
+
       res.json({ success: true, deployments: data.deployments || [] });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || "Failed to fetch Vercel deployments." });

@@ -63,27 +63,77 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
     autoTitle = `${cleanTitle} - Full Stack Architecture`;
   }
 
-  // Tailored problem & solution statement
-  const problem = `Delivering a seamless, highly responsive user experience across devices while maintaining reliable real-time state synchronization and fast initial load times.`;
-  const solution = `Engineered a robust, modular ${category} solution using ${techArray.slice(0, 4).join(', ')}. Implemented scalable architecture, responsive UI components, and optimized data flow.`;
+  // Domain-specific tailored problem, solution, features, and description generation
+  const lowerTitle = cleanTitle.toLowerCase();
+  const lowerReadme = readme.toLowerCase();
 
-  // Key Features
-  const keyFeatures = [
-    `Intuitive, responsive user interface built with ${techArray[0] || 'Modern UI Framework'}`,
-    `Optimized data management with low latency and clean component architecture`,
-    `Seamless integration with external APIs and automated state persistence`,
-    `Cross-platform compatibility with high performance scoring and smooth transitions`,
+  let domainConcept = `${cleanTitle} is an advanced ${category.toLowerCase()} application designed to provide intuitive user workflows, high data throughput, and a polished interactive interface.`;
+  let domainProblem = `Addressing the need for high-performance, real-time responsive user interfaces with reliable state management and minimal latency across varied client environments.`;
+  let domainSolution = `Engineered a modular ${category} solution utilizing ${techArray.slice(0, 3).join(', ')} to provide seamless state synchronization, client-side caching, and responsive UI layouts.`;
+
+  let domainFeatures = [
+    `Interactive, responsive user interface built with ${techArray[0] || 'Modern Frontend'} for smooth multi-device experience`,
+    `Optimized state management and efficient data fetching architecture with instant reactivity`,
+    `Robust error handling, input validation, and clean component-driven design patterns`,
+    `Modular architecture facilitating easy feature expansion and high code maintainability`,
   ];
 
-  // Enhanced Short Description
-  const enhancedDescription = `${cleanTitle} is a production-grade ${category.toLowerCase()} application designed for speed, fluid interactions, and scalability, built with ${techArray.slice(0, 4).join(', ')}.`;
+  if (lowerTitle.includes('shop') || lowerTitle.includes('store') || lowerTitle.includes('e-commerce') || lowerTitle.includes('nile') || lowerReadme.includes('cart')) {
+    domainConcept = `${cleanTitle} is a modern, scalable e-commerce digital storefront enabling seamless product browsing, shopping cart management, secure checkout workflows, and administrative product control.`;
+    domainProblem = `Online shoppers demand instantaneous page load times, friction-free shopping cart updates, and reliable order state tracking without complex checkout hurdles.`;
+    domainSolution = `Architected a high-converting digital storefront using ${techArray.slice(0, 3).join(', ')} featuring optimistic UI cart updates, dynamic product filtering, and scalable state persistence.`;
+    domainFeatures = [
+      `Dynamic product catalog with instant category filtering and real-time search indexing`,
+      `Interactive shopping cart with optimistic state updates and persistent item storage`,
+      `Secure multi-step checkout workflow with order summary and transaction verification`,
+      `Merchant admin suite for managing inventory, pricing tiers, and promotional banners`,
+    ];
+  } else if (lowerTitle.includes('ai') || lowerTitle.includes('gpt') || lowerTitle.includes('gemini') || lowerTitle.includes('bot') || lowerTitle.includes('smart') || lowerReadme.includes('model') || lowerReadme.includes('prompt')) {
+    domainConcept = `${cleanTitle} is an intelligent AI-powered platform leveraging state-of-the-art generative language and vision models to automate complex creative and analytical workflows.`;
+    domainProblem = `Users need rapid, contextual access to AI reasoning without dealing with raw API parameters, unformatted outputs, or slow streaming response times.`;
+    domainSolution = `Integrated Google Gemini AI APIs with structured JSON output schemas, real-time response streaming, and contextual memory management.`;
+    domainFeatures = [
+      `Real-time AI response streaming with markdown formatting and syntax highlighting`,
+      `Contextual memory buffer retaining conversation history for multi-turn interactions`,
+      `Structured JSON schema generation for automated data extraction and classification`,
+      `Customizable system prompts and temperature parameters for targeted domain tasks`,
+    ];
+  } else if (lowerTitle.includes('dashboard') || lowerTitle.includes('admin') || lowerTitle.includes('analytics') || lowerTitle.includes('metrics') || lowerReadme.includes('chart')) {
+    domainConcept = `${cleanTitle} is a comprehensive analytics and management dashboard offering real-time data visualization, KPI tracking, and administrative control tools.`;
+    domainProblem = `Consolidating disparate data feeds into a clear, performant executive dashboard without causing visual clutter or rendering bottlenecks.`;
+    domainSolution = `Built an interactive control panel using ${techArray.slice(0, 3).join(', ')} with memoized chart components, dynamic metric filters, and dark mode theme switching.`;
+    domainFeatures = [
+      `Interactive data visualization charts with customizable date range filters`,
+      `Real-time KPI metrics panel tracking active sessions, conversion rates, and revenue`,
+      `Role-based user management and activity audit logging`,
+      `Exportable reports in PDF and CSV formats for offline business analysis`,
+    ];
+  } else if (category === 'Android' || lowerTitle.includes('android') || techArray.includes('Kotlin')) {
+    domainConcept = `${cleanTitle} is a native Android application built with Jetpack Compose and Material 3 design guidelines, prioritizing high performance and offline-first data reliability.`;
+    domainProblem = `Mobile users expect smooth 60fps animations, minimal battery drain, and full offline accessibility regardless of network connectivity fluctuations.`;
+    domainSolution = `Developed a native Android application using Kotlin, Room DB for local caching, Coroutines for asynchronous work, and Jetpack Compose for declarative UI rendering.`;
+    domainFeatures = [
+      `Declarative UI components built with Jetpack Compose and Material 3 design tokens`,
+      `Offline-first architecture powered by Room SQLite database and Flow state streams`,
+      `Asynchronous background processing using Kotlin Coroutines and WorkManager`,
+      `Optimized memory consumption and battery efficiency under heavy workload`,
+    ];
+  }
 
-  // Long description & Case Study
-  const longDescription = `### ${autoTitle}\n\n` +
-    `#### 🎯 Problem Statement\n${problem}\n\n` +
-    `#### 💡 Technical Solution & Architecture\n${solution}\n\n` +
-    `#### 🛠️ Technology Stack & Tools\n${techArray.map(t => `- **${t}**`).join('\n')}\n` +
-    (readme ? `\n\n#### 📄 Repository README Snippet\n${readme.slice(0, 900)}...` : '');
+  // Enhanced Short Description
+  const enhancedDescription = domainConcept;
+
+  // Long description & Technical Case Study
+  const longDescription = `## 🚀 What is ${autoTitle}?\n` +
+    `${domainConcept}\n\n` +
+    `## 💡 The Engineering Challenge & Solution\n` +
+    `**Problem:** ${domainProblem}\n\n` +
+    `**Solution:** ${domainSolution}\n\n` +
+    `## ✨ Core Features & Key Capabilities\n` +
+    domainFeatures.map(f => `- ${f}`).join('\n') + `\n\n` +
+    `## 🛠️ Technology Stack & Architectural Rationale\n` +
+    techArray.map(t => `- **${t}**: Selected for optimal performance, developer experience, and maintainability.`).join('\n') + `\n\n` +
+    (readme ? `## 📄 Repository README Snippet\n\`\`\`markdown\n${readme.slice(0, 1000)}...\n\`\`\`\n` : '');
 
   // Highlights
   const highlights = [
@@ -121,9 +171,9 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
 
   return {
     autoTitle,
-    problem,
-    solution,
-    keyFeatures,
+    problem: domainProblem,
+    solution: domainSolution,
+    keyFeatures: domainFeatures,
     enhancedDescription,
     longDescription,
     techStack: techArray,
