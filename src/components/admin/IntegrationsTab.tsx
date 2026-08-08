@@ -115,17 +115,47 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     }
   };
 
+  // Safe fetch helper to avoid JSON parse errors on HTML responses
+  const safeJsonFetch = async (url: string, options?: RequestInit) => {
+    try {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn(`Safe fetch warning for ${url}:`, err);
+    }
+    return null;
+  };
+
   const fetchGitHubUser = async (token: string) => {
+    if (!token) return;
     setGhUserLoading(true);
     try {
-      const res = await fetch('/api/integrations/github/user', {
+      // Try backend proxy first
+      const proxyData = await safeJsonFetch('/api/integrations/github/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
-      const data = await res.json();
-      if (data.success && data.user) {
-        setGhUser(data.user);
+
+      if (proxyData?.success && proxyData.user) {
+        setGhUser(proxyData.user);
+        return;
+      }
+
+      // Fallback: Direct GitHub API fetch
+      const directRes = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token.trim()}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (directRes.ok && directRes.headers.get('content-type')?.includes('application/json')) {
+        const user = await directRes.json();
+        setGhUser(user);
       }
     } catch (err) {
       console.log('Error fetching GitHub user profile:', err);
@@ -135,19 +165,45 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   };
 
   const fetchGitHubRepos = async (token: string) => {
+    if (!token) return;
     setGhLoading(true);
     setGhError('');
     try {
-      const res = await fetch('/api/integrations/github/repos', {
+      // Try backend proxy first
+      const proxyData = await safeJsonFetch('/api/integrations/github/repos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to fetch repositories.');
+
+      if (proxyData?.success && Array.isArray(proxyData.repos)) {
+        setGhRepos(proxyData.repos);
+        return;
       }
-      setGhRepos(data.repos || []);
+
+      // Fallback: Direct GitHub API fetch
+      const directRes = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+        headers: {
+          Authorization: `Bearer ${token.trim()}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      const isJson = directRes.headers.get('content-type')?.includes('application/json');
+      if (directRes.ok && isJson) {
+        const repos = await directRes.json();
+        if (Array.isArray(repos)) {
+          setGhRepos(repos);
+          return;
+        }
+      }
+
+      if (!directRes.ok) {
+        const errJson = isJson ? await directRes.json() : null;
+        throw new Error(errJson?.message || `GitHub API returned ${directRes.status}. Please check your token scopes.`);
+      }
+
+      throw new Error('Failed to retrieve GitHub repositories.');
     } catch (err: any) {
       setGhError(err.message || 'Error connecting to GitHub.');
     } finally {
@@ -156,19 +212,49 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   };
 
   const fetchVercelProjects = async (token: string, teamId?: string) => {
+    if (!token) return;
     setVLoading(true);
     setVError('');
     try {
-      const res = await fetch('/api/integrations/vercel/projects', {
+      // Try backend proxy first
+      const proxyData = await safeJsonFetch('/api/integrations/vercel/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, teamId }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to fetch Vercel projects.');
+
+      if (proxyData?.success && Array.isArray(proxyData.projects)) {
+        setVProjects(proxyData.projects);
+        return;
       }
-      setVProjects(data.projects || []);
+
+      // Fallback: Direct Vercel API fetch
+      let url = 'https://api.vercel.com/v9/projects';
+      if (teamId) {
+        url += `?teamId=${encodeURIComponent(teamId.trim())}`;
+      }
+
+      const directRes = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token.trim()}`,
+        },
+      });
+
+      const isJson = directRes.headers.get('content-type')?.includes('application/json');
+      if (directRes.ok && isJson) {
+        const data = await directRes.json();
+        if (Array.isArray(data.projects)) {
+          setVProjects(data.projects);
+          return;
+        }
+      }
+
+      if (!directRes.ok) {
+        const errJson = isJson ? await directRes.json() : null;
+        throw new Error(errJson?.error?.message || `Vercel API returned ${directRes.status}. Check token credentials.`);
+      }
+
+      throw new Error('Failed to fetch Vercel projects.');
     } catch (err: any) {
       setVError(err.message || 'Error connecting to Vercel.');
     } finally {
@@ -180,7 +266,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     if (!config.vercelToken) return;
     setLoadingDeployments((prev) => ({ ...prev, [projectId]: true }));
     try {
-      const res = await fetch('/api/integrations/vercel/deployments', {
+      const proxyData = await safeJsonFetch('/api/integrations/vercel/deployments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,9 +275,29 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
           teamId: config.vercelTeamId,
         }),
       });
-      const data = await res.json();
-      if (data.success && data.deployments) {
-        setActiveDeployments((prev) => ({ ...prev, [projectId]: data.deployments }));
+
+      if (proxyData?.success && Array.isArray(proxyData.deployments)) {
+        setActiveDeployments((prev) => ({ ...prev, [projectId]: proxyData.deployments }));
+        return;
+      }
+
+      // Fallback: Direct Vercel API
+      let url = `https://api.vercel.com/v6/deployments?limit=10&projectId=${encodeURIComponent(projectId.trim())}`;
+      if (config.vercelTeamId) {
+        url += `&teamId=${encodeURIComponent(config.vercelTeamId.trim())}`;
+      }
+
+      const directRes = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${config.vercelToken.trim()}`,
+        },
+      });
+
+      if (directRes.ok && directRes.headers.get('content-type')?.includes('application/json')) {
+        const data = await directRes.json();
+        if (Array.isArray(data.deployments)) {
+          setActiveDeployments((prev) => ({ ...prev, [projectId]: data.deployments }));
+        }
       }
     } catch (err) {
       console.log('Error fetching deployments:', err);
@@ -207,7 +313,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       // 1. Fetch README
       let readmeText = '';
       try {
-        const readmeRes = await fetch('/api/integrations/github/readme', {
+        const readmeData = await safeJsonFetch('/api/integrations/github/readme', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -216,16 +322,27 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             token: config.githubToken,
           }),
         });
-        const readmeData = await readmeRes.json();
-        if (readmeData.success && readmeData.content) {
+
+        if (readmeData?.success && readmeData.content) {
           readmeText = readmeData.content;
+        } else if (config.githubToken) {
+          // Direct fallback for README
+          const directReadme = await fetch(`https://api.github.com/repos/${repo.full_name}/readme`, {
+            headers: {
+              Authorization: `Bearer ${config.githubToken.trim()}`,
+              Accept: 'application/vnd.github.v3.raw',
+            },
+          });
+          if (directReadme.ok) {
+            readmeText = await directReadme.text();
+          }
         }
       } catch (e) {
         console.log('No README found for AI enhancement.');
       }
 
-      // 2. Call Gemini AI route
-      const aiRes = await fetch('/api/ai/enhance-project', {
+      // 2. Call Gemini AI route (safe json)
+      const aiData = await safeJsonFetch('/api/ai/enhance-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -238,8 +355,6 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         }),
       });
 
-      const aiData = await aiRes.json();
-
       let liveUrl = repo.homepage || '';
       const matchingVercel = vProjects.find(
         (v) => v.name.toLowerCase() === repo.name.toLowerCase()
@@ -248,7 +363,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         liveUrl = `https://${matchingVercel.targets.production.url}`;
       }
 
-      if (aiData.success && aiData.data) {
+      if (aiData?.success && aiData.data) {
         const enriched = aiData.data;
         onImportDraftProject({
           title: enriched.autoTitle || repo.name,
@@ -283,7 +398,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const handleConvertToDraft = async (repo: GitHubRepoItem) => {
     let readmeText = '';
     try {
-      const res = await fetch('/api/integrations/github/readme', {
+      const readmeData = await safeJsonFetch('/api/integrations/github/readme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -292,9 +407,19 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
           token: config.githubToken,
         }),
       });
-      const data = await res.json();
-      if (data.success && data.content) {
-        readmeText = data.content;
+
+      if (readmeData?.success && readmeData.content) {
+        readmeText = readmeData.content;
+      } else if (config.githubToken) {
+        const directReadme = await fetch(`https://api.github.com/repos/${repo.full_name}/readme`, {
+          headers: {
+            Authorization: `Bearer ${config.githubToken.trim()}`,
+            Accept: 'application/vnd.github.v3.raw',
+          },
+        });
+        if (directReadme.ok) {
+          readmeText = await directReadme.text();
+        }
       }
     } catch (e) {
       console.log('No README found.');
