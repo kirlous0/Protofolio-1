@@ -165,14 +165,14 @@ export function getProjectScreenshots(options: {
       cleanUrl.includes('.net') ||
       cleanUrl.includes('.org')
     )) {
-      const desktopLive = `https://image.thum.io/get/width/1200/noanimate/${cleanUrl}`;
-      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url`;
+      const desktopLive = `https://image.thum.io/get/width/1200/wait/3/${cleanUrl}`;
+      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=3000`;
       
       // Common sub-routes for inner menus & pages
       const baseNoSlash = cleanUrl.endsWith('/') ? cleanUrl.slice(0, -1) : cleanUrl;
-      const dashboardLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/dashboard`;
-      const menuLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/menu`;
-      const projectsLive = `https://image.thum.io/get/width/1200/noanimate/${baseNoSlash}/projects`;
+      const dashboardLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/dashboard`;
+      const menuLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/menu`;
+      const projectsLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/projects`;
 
       if (!list.includes(desktopLive)) list.push(desktopLive);
       if (!list.includes(microlinkLive)) list.push(microlinkLive);
@@ -252,8 +252,8 @@ export function getWebsiteScreenshotUrl(options: {
       cleanUrl.includes('.net') ||
       cleanUrl.includes('.org')
     )) {
-      // Returns real-time screenshot captured from the Vercel site
-      return `https://image.thum.io/get/width/1200/noanimate/${cleanUrl}`;
+      // Returns real-time screenshot captured from the Vercel site after waiting for animations
+      return `https://image.thum.io/get/width/1200/wait/3/${cleanUrl}`;
     }
   }
 
