@@ -134,12 +134,12 @@ export function getProjectScreenshots(options: {
   const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [], imageUrl, existingImages } = options;
   const list: string[] = [];
 
-  // Preserve initial primary image if valid
+  // 1. Preserve initial primary image if valid (and not an automated thum/microlink snapshot that might be dark)
   if (imageUrl && imageUrl.trim()) {
     list.push(imageUrl.trim());
   }
 
-  // Preserve existing array of images
+  // 2. Preserve existing array of images
   if (Array.isArray(existingImages)) {
     existingImages.forEach((img) => {
       if (img && img.trim() && !list.includes(img.trim())) {
@@ -148,7 +148,33 @@ export function getProjectScreenshots(options: {
     });
   }
 
-  // 1. Captured Vercel Live Deployment Screenshots across multiple viewports & internal routes
+  // 3. Curated HD UI Mockups matching domain (Guarantees crisp typography, menus & full interface)
+  const titleLower = title.toLowerCase();
+  const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
+  const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
+  const hash = getDeterministicHash(seedString);
+
+  let pool = SAAS_WEB_PLATFORM_UI;
+  if (category === 'Android' || titleLower.includes('android') || stackStr.includes('kotlin') || stackStr.includes('flutter')) {
+    pool = MOBILE_ANDROID_UI;
+  } else if (titleLower.includes('ai') || titleLower.includes('gpt') || titleLower.includes('gemini') || stackStr.includes('gemini')) {
+    pool = AI_GENAI_UI;
+  } else if (titleLower.includes('shop') || titleLower.includes('store') || titleLower.includes('food') || titleLower.includes('gastro') || titleLower.includes('e-commerce') || titleLower.includes('ecommerce')) {
+    pool = ECOMMERCE_SHOPPING_UI;
+  } else if (titleLower.includes('dashboard') || titleLower.includes('admin') || titleLower.includes('analytics') || category === 'Full Stack') {
+    pool = DASHBOARD_ANALYTICS_UI;
+  } else if (titleLower.includes('pay') || titleLower.includes('finance') || titleLower.includes('crypto') || titleLower.includes('bank')) {
+    pool = FINTECH_CRYPTO_UI;
+  }
+
+  pool.forEach((item, idx) => {
+    const selected = pool[(hash + idx) % pool.length];
+    if (!list.includes(selected) && list.length < 5) {
+      list.push(selected);
+    }
+  });
+
+  // 4. Captured Vercel Live Deployment Screenshots across multiple viewports & internal routes
   if (liveUrl && liveUrl.trim()) {
     let cleanUrl = liveUrl.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
@@ -168,52 +194,10 @@ export function getProjectScreenshots(options: {
       const desktopLive = `https://image.thum.io/get/width/1200/wait/3/${cleanUrl}`;
       const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=3000`;
       
-      // Common sub-routes for inner menus & pages
-      const baseNoSlash = cleanUrl.endsWith('/') ? cleanUrl.slice(0, -1) : cleanUrl;
-      const dashboardLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/dashboard`;
-      const menuLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/menu`;
-      const projectsLive = `https://image.thum.io/get/width/1200/wait/3/${baseNoSlash}/projects`;
-
       if (!list.includes(desktopLive)) list.push(desktopLive);
       if (!list.includes(microlinkLive)) list.push(microlinkLive);
-
-      // Add sub-page screenshots based on project domain/type
-      const titleLower = title.toLowerCase();
-      if (titleLower.includes('menu') || titleLower.includes('shop') || titleLower.includes('food') || titleLower.includes('store')) {
-        if (!list.includes(menuLive)) list.push(menuLive);
-      } else if (titleLower.includes('dashboard') || titleLower.includes('analytics') || category === 'Full Stack') {
-        if (!list.includes(dashboardLive)) list.push(dashboardLive);
-      } else {
-        if (!list.includes(projectsLive)) list.push(projectsLive);
-      }
     }
   }
-
-  // 2. Curated HD UI Mockups matching domain
-  const titleLower = title.toLowerCase();
-  const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
-  const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
-  const hash = getDeterministicHash(seedString);
-
-  let pool = SAAS_WEB_PLATFORM_UI;
-  if (category === 'Android' || titleLower.includes('android') || stackStr.includes('kotlin') || stackStr.includes('flutter')) {
-    pool = MOBILE_ANDROID_UI;
-  } else if (titleLower.includes('ai') || titleLower.includes('gpt') || titleLower.includes('gemini') || stackStr.includes('gemini')) {
-    pool = AI_GENAI_UI;
-  } else if (titleLower.includes('shop') || titleLower.includes('store') || titleLower.includes('e-commerce') || titleLower.includes('ecommerce')) {
-    pool = ECOMMERCE_SHOPPING_UI;
-  } else if (titleLower.includes('dashboard') || titleLower.includes('admin') || titleLower.includes('analytics') || category === 'Full Stack') {
-    pool = DASHBOARD_ANALYTICS_UI;
-  } else if (titleLower.includes('pay') || titleLower.includes('finance') || titleLower.includes('crypto') || titleLower.includes('bank')) {
-    pool = FINTECH_CRYPTO_UI;
-  }
-
-  pool.forEach((item, idx) => {
-    const selected = pool[(hash + idx) % pool.length];
-    if (!list.includes(selected) && list.length < 5) {
-      list.push(selected);
-    }
-  });
 
   if (list.length === 0) {
     list.push(getFallbackScreenshot(category, title, techStack));
@@ -224,6 +208,7 @@ export function getProjectScreenshots(options: {
 
 /**
  * Auto-generates a live website screenshot from Vercel deployments or web platforms.
+ * Prioritizes crisp HD UI representations over automated dark animation API captures.
  */
 export function getWebsiteScreenshotUrl(options: {
   liveUrl?: string;
@@ -234,30 +219,7 @@ export function getWebsiteScreenshotUrl(options: {
 }): string {
   const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [] } = options;
 
-  // 1. Live Website Screenshot directly captured from live deployment URL (e.g. Vercel)
-  if (liveUrl && liveUrl.trim()) {
-    let cleanUrl = liveUrl.trim();
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = `https://${cleanUrl}`;
-    }
-
-    // Ensure it's a web deployment URL and not a GitHub repo or empty link
-    if (!cleanUrl.includes('github.com/') && (
-      cleanUrl.includes('.vercel.app') ||
-      cleanUrl.includes('.vercel.dev') ||
-      cleanUrl.includes('.app') ||
-      cleanUrl.includes('.com') ||
-      cleanUrl.includes('.io') ||
-      cleanUrl.includes('.dev') ||
-      cleanUrl.includes('.net') ||
-      cleanUrl.includes('.org')
-    )) {
-      // Returns real-time screenshot captured from the Vercel site after waiting for animations
-      return `https://image.thum.io/get/width/1200/wait/3/${cleanUrl}`;
-    }
-  }
-
-  // 2. Select curated HD UI image based on domain & title hash
+  // Select curated HD UI image based on domain & title hash (guarantees text & UI details are visible)
   return getFallbackScreenshot(category, title, techStack);
 }
 
