@@ -9,10 +9,12 @@ import {
   Eye, 
   Filter,
   PlusCircle,
-  ShieldCheck
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project, ProjectCategory } from '../types';
+import { getFallbackScreenshot } from '../utils/screenshot';
 
 interface ProjectsProps {
   projects: Project[];
@@ -194,13 +196,22 @@ export const Projects: React.FC<ProjectsProps> = ({
                         src={project.imageUrl}
                         alt={project.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
+                        }}
                       />
                       
                       {/* Top Category Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-2">
+                      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold shadow-md bg-slate-900/90 border border-slate-700 text-slate-200">
                           {project.category}
                         </span>
+                        {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
+                          <span className="bg-slate-900/95 text-cyan-300 border border-cyan-500/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 shadow-md">
+                            <Zap className="w-3 h-3 text-amber-400" />
+                            Vercel Live
+                          </span>
+                        )}
                         {project.featured && (
                           <span className="bg-slate-800 text-slate-200 border border-slate-700 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold flex items-center gap-1 shadow-md">
                             <Sparkles className="w-3 h-3 text-blue-400" />
@@ -290,12 +301,14 @@ export const Projects: React.FC<ProjectsProps> = ({
                           href={project.liveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`p-2 rounded-lg transition-colors ${
-                            darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-950'
+                          className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
+                            project.liveUrl.includes('vercel')
+                              ? 'text-cyan-400 hover:text-cyan-300 font-bold'
+                              : (darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-950')
                           }`}
-                          title="Live Demo"
+                          title={project.liveUrl.includes('vercel') ? 'Live Vercel Site' : 'Live Demo'}
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          {project.liveUrl.includes('vercel') ? <Zap className="w-4 h-4 text-amber-400" /> : <ExternalLink className="w-4 h-4" />}
                         </a>
                       )}
                     </div>

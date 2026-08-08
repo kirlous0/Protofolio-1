@@ -3,7 +3,7 @@ import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, Che
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
-import { getWebsiteScreenshotUrl } from '../../utils/screenshot';
+import { getWebsiteScreenshotUrl, getFallbackScreenshot } from '../../utils/screenshot';
 
 interface ProjectFormModalProps {
   isOpen: boolean;
@@ -159,15 +159,26 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   };
 
   const handleAutoGenerateScreenshot = () => {
+    let cleanLiveUrl = liveUrl.trim();
+    if (cleanLiveUrl && !cleanLiveUrl.startsWith('http://') && !cleanLiveUrl.startsWith('https://')) {
+      cleanLiveUrl = `https://${cleanLiveUrl}`;
+      setLiveUrl(cleanLiveUrl);
+    }
+
     const generatedUrl = getWebsiteScreenshotUrl({
-      liveUrl,
+      liveUrl: cleanLiveUrl,
       githubUrl,
       category,
       title,
       techStack: techStackInput.split(',').map(s => s.trim()).filter(Boolean),
     });
     setImageUrl(generatedUrl);
-    setAiSuccessMsg('📷 Live website screenshot URL auto-generated!');
+
+    if (cleanLiveUrl.includes('vercel')) {
+      setAiSuccessMsg('⚡ Live screenshot URL captured from Vercel deployment!');
+    } else {
+      setAiSuccessMsg('📷 Live website screenshot URL auto-generated!');
+    }
     setTimeout(() => setAiSuccessMsg(''), 3000);
   };
 
@@ -494,7 +505,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                       alt="Preview screenshot"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80';
+                        (e.target as HTMLImageElement).src = getFallbackScreenshot(category, title, techStackInput.split(','));
                       }}
                     />
                   </div>

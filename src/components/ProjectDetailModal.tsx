@@ -9,10 +9,12 @@ import {
   CheckCircle2, 
   Sparkles,
   Layers,
-  Code
+  Code,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '../types';
+import { getFallbackScreenshot } from '../utils/screenshot';
 
 interface ProjectDetailModalProps {
   project: Project | null;
@@ -82,7 +84,16 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
               src={project.imageUrl} 
               alt={project.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
+              }}
             />
+            {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>Live Vercel Production</span>
+              </div>
+            )}
             {project.category === 'Android' && (
               <button
                 onClick={() => {
@@ -170,10 +181,14 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   href={project.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-md shadow-amber-500/20"
+                  className={`px-4 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-md ${
+                    project.liveUrl.includes('vercel')
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 shadow-cyan-500/20'
+                      : 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-amber-500/20'
+                  }`}
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Live Demo / App Release</span>
+                  {project.liveUrl.includes('vercel') ? <Zap className="w-4 h-4 text-amber-400" /> : <ExternalLink className="w-4 h-4" />}
+                  <span>{project.liveUrl.includes('vercel') ? '⚡ View Live Vercel Site' : 'Live Demo / App Release'}</span>
                 </a>
               )}
             </div>

@@ -1,6 +1,6 @@
 /**
  * Auto-generates high-definition, domain-specific UI screenshots
- * and live website previews without code editors or 404 error pages.
+ * and live website previews from Vercel deployments and web platforms.
  */
 
 // Curated UI Screenshot Pools - Strictly modern application interfaces (NO code editors or syntax screens)
@@ -29,7 +29,6 @@ const AI_GENAI_UI = [
   'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80', // Neural AI Interface
   'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80', // AI Platform Workspace
   'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80', // Smart Intelligent Studio
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80', // Generative AI Screen
 ];
 
 const SAAS_WEB_PLATFORM_UI = [
@@ -58,7 +57,35 @@ function getDeterministicHash(str: string): number {
 }
 
 /**
- * Auto-generates a live website screenshot or domain-matched HD UI mockup
+ * Returns a domain-matched fallback HD UI screenshot for safe image error recovery
+ */
+export function getFallbackScreenshot(category?: string, title?: string, techStack?: string[]): string {
+  const titleLower = (title || '').toLowerCase();
+  const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
+  const seedString = `${titleLower}_fallback_${category || 'Web'}`;
+  const hash = getDeterministicHash(seedString);
+
+  if (category === 'Android' || titleLower.includes('android') || stackStr.includes('kotlin') || stackStr.includes('flutter')) {
+    return MOBILE_ANDROID_UI[hash % MOBILE_ANDROID_UI.length];
+  }
+  if (titleLower.includes('ai') || titleLower.includes('gpt') || titleLower.includes('gemini') || stackStr.includes('gemini')) {
+    return AI_GENAI_UI[hash % AI_GENAI_UI.length];
+  }
+  if (titleLower.includes('shop') || titleLower.includes('store') || titleLower.includes('e-commerce') || titleLower.includes('ecommerce')) {
+    return ECOMMERCE_SHOPPING_UI[hash % ECOMMERCE_SHOPPING_UI.length];
+  }
+  if (titleLower.includes('dashboard') || titleLower.includes('admin') || titleLower.includes('analytics') || category === 'Full Stack') {
+    return DASHBOARD_ANALYTICS_UI[hash % DASHBOARD_ANALYTICS_UI.length];
+  }
+  if (titleLower.includes('pay') || titleLower.includes('finance') || titleLower.includes('crypto') || titleLower.includes('bank')) {
+    return FINTECH_CRYPTO_UI[hash % FINTECH_CRYPTO_UI.length];
+  }
+
+  return SAAS_WEB_PLATFORM_UI[hash % SAAS_WEB_PLATFORM_UI.length];
+}
+
+/**
+ * Auto-generates a live website screenshot from Vercel deployments or web platforms.
  */
 export function getWebsiteScreenshotUrl(options: {
   liveUrl?: string;
@@ -69,46 +96,30 @@ export function getWebsiteScreenshotUrl(options: {
 }): string {
   const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [] } = options;
 
-  // 1. Live Website Screenshot ONLY if liveUrl is a explicit deployed production web URL
-  if (liveUrl && liveUrl.trim().startsWith('http')) {
-    const cleanUrl = liveUrl.trim();
-    // Verify it's not a github repository URL or non-web link
-    if (!cleanUrl.includes('github.com/') && (cleanUrl.includes('.app') || cleanUrl.includes('.com') || cleanUrl.includes('.io') || cleanUrl.includes('.dev') || cleanUrl.includes('.net') || cleanUrl.includes('.org'))) {
+  // 1. Live Website Screenshot directly captured from live deployment URL (e.g. Vercel)
+  if (liveUrl && liveUrl.trim()) {
+    let cleanUrl = liveUrl.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    // Ensure it's a web deployment URL and not a GitHub repo or empty link
+    if (!cleanUrl.includes('github.com/') && (
+      cleanUrl.includes('.vercel.app') ||
+      cleanUrl.includes('.vercel.dev') ||
+      cleanUrl.includes('.app') ||
+      cleanUrl.includes('.com') ||
+      cleanUrl.includes('.io') ||
+      cleanUrl.includes('.dev') ||
+      cleanUrl.includes('.net') ||
+      cleanUrl.includes('.org')
+    )) {
+      // Returns real-time screenshot captured from the Vercel site
       return `https://image.thum.io/get/width/1200/crop/800/noanimate/${cleanUrl}`;
     }
   }
 
   // 2. Select curated HD UI image based on domain & title hash
-  const titleLower = title.toLowerCase();
-  const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack)).toLowerCase();
-  const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
-  const hash = getDeterministicHash(seedString);
-
-  // Android / Mobile App domain
-  if (category === 'Android' || titleLower.includes('android') || stackStr.includes('kotlin') || stackStr.includes('jetpack') || stackStr.includes('flutter')) {
-    return MOBILE_ANDROID_UI[hash % MOBILE_ANDROID_UI.length];
-  }
-
-  // AI & Smart Tools domain
-  if (titleLower.includes('ai') || titleLower.includes('gpt') || titleLower.includes('gemini') || titleLower.includes('bot') || titleLower.includes('smart') || stackStr.includes('gemini') || stackStr.includes('openai')) {
-    return AI_GENAI_UI[hash % AI_GENAI_UI.length];
-  }
-
-  // E-Commerce / Store domain
-  if (titleLower.includes('shop') || titleLower.includes('store') || titleLower.includes('e-commerce') || titleLower.includes('ecommerce') || titleLower.includes('nile') || titleLower.includes('cart') || titleLower.includes('market')) {
-    return ECOMMERCE_SHOPPING_UI[hash % ECOMMERCE_SHOPPING_UI.length];
-  }
-
-  // Analytics & Dashboard / Admin domain
-  if (titleLower.includes('dashboard') || titleLower.includes('admin') || titleLower.includes('analytics') || titleLower.includes('metrics') || titleLower.includes('manager') || category === 'Full Stack') {
-    return DASHBOARD_ANALYTICS_UI[hash % DASHBOARD_ANALYTICS_UI.length];
-  }
-
-  // Fintech & Finance domain
-  if (titleLower.includes('pay') || titleLower.includes('finance') || titleLower.includes('crypto') || titleLower.includes('bank') || titleLower.includes('wallet') || titleLower.includes('budget')) {
-    return FINTECH_CRYPTO_UI[hash % FINTECH_CRYPTO_UI.length];
-  }
-
-  // General SaaS & Web Platform UI domain
-  return SAAS_WEB_PLATFORM_UI[hash % SAAS_WEB_PLATFORM_UI.length];
+  return getFallbackScreenshot(category, title, techStack);
 }
+
