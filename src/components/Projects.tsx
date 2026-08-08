@@ -11,7 +11,8 @@ import {
   PlusCircle,
   ShieldCheck,
   Zap,
-  Camera
+  Camera,
+  Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project, ProjectCategory } from '../types';
@@ -196,7 +197,9 @@ export const Projects: React.FC<ProjectsProps> = ({
                       <img
                         src={project.imageUrl}
                         alt={project.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                        className={`w-full h-full group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100 ${
+                          project.fitMode === 'contain' ? 'object-contain p-2 bg-slate-950' : 'object-cover'
+                        }`}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
                         }}
@@ -217,6 +220,12 @@ export const Projects: React.FC<ProjectsProps> = ({
                           <span className="bg-slate-800 text-slate-200 border border-slate-700 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold flex items-center gap-1 shadow-md">
                             <Sparkles className="w-3 h-3 text-blue-400" />
                             Featured
+                          </span>
+                        )}
+                        {project.bestImages && project.bestImages.length > 0 && (
+                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 shadow-md backdrop-blur-sm">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            {project.bestImages.length} Best Shots
                           </span>
                         )}
                         {project.images && project.images.length > 1 && (

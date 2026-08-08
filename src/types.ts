@@ -20,6 +20,8 @@ export interface Project {
   liveUrl?: string;
   imageUrl: string;
   images?: string[];
+  bestImages?: string[];
+  fitMode?: 'contain' | 'cover';
   featured: boolean;
   createdAt: string;
   highlights?: string[];
@@ -89,6 +91,7 @@ export interface AIEnhancementResponse {
   seoMetadata: SEOMetadata;
   screenshotUrl?: string;
   images?: string[];
+  bestImages?: string[];
 }
 
 export interface SkillItem {

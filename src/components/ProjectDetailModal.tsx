@@ -15,7 +15,10 @@ import {
   ChevronRight,
   Maximize2,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Star,
+  Crop,
+  Maximize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '../types';
@@ -36,14 +39,25 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 }) => {
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [fitMode, setFitMode] = useState<'contain' | 'cover'>(project?.fitMode || 'contain');
+  const [onlyBestShots, setOnlyBestShots] = useState(false);
 
   if (!project) return null;
 
-  const galleryImages = project.images && project.images.length > 0
+  const allImages = project.images && project.images.length > 0
     ? project.images
     : [project.imageUrl];
 
-  const currentImage = galleryImages[activeImgIndex] || project.imageUrl;
+  const bestShots = (project.bestImages && project.bestImages.length > 0)
+    ? project.bestImages
+    : [allImages[0]];
+
+  const galleryImages = (onlyBestShots && bestShots.length > 0)
+    ? bestShots
+    : allImages;
+
+  const currentImage = galleryImages[activeImgIndex] || galleryImages[0] || project.imageUrl;
+  const isCurrentBest = bestShots.includes(currentImage);
 
   const handlePrev = () => {
     setActiveImgIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
@@ -100,26 +114,93 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </button>
           </div>
 
-          {/* Interactive Screenshot Gallery Carousel */}
+          {/* Interactive Screenshot Gallery Carousel & View Controls */}
           <div className="space-y-3">
+            {/* Action Bar: Fit Toggle & Best Shots Filter */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                {bestShots.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setOnlyBestShots(!onlyBestShots);
+                      setActiveImgIndex(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
+                      onlyBestShots
+                        ? 'bg-amber-400 text-stone-950 border-amber-300 shadow-md shadow-amber-400/20'
+                        : darkMode
+                        ? 'bg-stone-800 border-stone-700 text-stone-300 hover:text-amber-400'
+                        : 'bg-stone-100 border-amber-200 text-stone-700 hover:text-amber-600'
+                    }`}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${onlyBestShots ? 'fill-stone-950' : 'text-amber-400'}`} />
+                    <span>{onlyBestShots ? '⭐ Showing Best Shots' : `⭐ Filter Best Shots (${bestShots.length})`}</span>
+                  </button>
+                )}
+
+                <span className="text-[11px] text-stone-400">
+                  {galleryImages.length} {galleryImages.length === 1 ? 'Screenshot' : 'Screenshots'}
+                </span>
+              </div>
+
+              {/* Fit Mode Toggle */}
+              <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800">
+                <button
+                  onClick={() => setFitMode('contain')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                    fitMode === 'contain'
+                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                  title="Shows 100% of screenshot without cutting off top/bottom"
+                >
+                  <Maximize className="w-3 h-3" />
+                  <span>Full View (Contain)</span>
+                </button>
+                <button
+                  onClick={() => setFitMode('cover')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                    fitMode === 'cover'
+                      ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                  title="Fills frame area completely"
+                >
+                  <Crop className="w-3 h-3" />
+                  <span>Crop Fill (Cover)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Main Screenshot Viewport */}
             <div className="relative rounded-2xl overflow-hidden aspect-video border border-amber-900/20 group bg-stone-950">
               <img 
                 src={currentImage} 
                 alt={`${project.title} screenshot ${activeImgIndex + 1}`}
-                className="w-full h-full object-cover transition-all duration-300 cursor-pointer"
+                className={`w-full h-full transition-all duration-300 cursor-pointer ${
+                  fitMode === 'contain' ? 'object-contain p-2 bg-stone-950' : 'object-cover'
+                }`}
                 onClick={() => setIsLightboxOpen(true)}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
                 }}
               />
 
-              {/* Vercel Live Tag */}
-              {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
-                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm z-10">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Live Vercel Production</span>
-                </div>
-              )}
+              {/* Badges Overlay */}
+              <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
+                {isCurrentBest && (
+                  <div className="px-3 py-1 rounded-full bg-amber-400 text-stone-950 border border-amber-300 text-xs font-mono font-extrabold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                    <Star className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
+                    <span>⭐ Best Screenshot</span>
+                  </div>
+                )}
+                {project.liveUrl && (project.liveUrl.includes('vercel.app') || project.liveUrl.includes('vercel')) && (
+                  <div className="px-3 py-1 rounded-full bg-slate-900/95 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-sm">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Live Vercel Production</span>
+                  </div>
+                )}
+              </div>
 
               {/* Fullscreen Expand Button */}
               <button
@@ -175,26 +256,34 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             {/* Thumbnail Strip Gallery */}
             {galleryImages.length > 1 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 custom-scrollbar">
-                {galleryImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveImgIndex(idx)}
-                    className={`relative w-20 aspect-video rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                      activeImgIndex === idx
-                        ? 'border-amber-500 ring-2 ring-amber-500/40 scale-105'
-                        : 'border-stone-700/60 opacity-60 hover:opacity-100 hover:border-stone-400'
-                    }`}
-                  >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
-                      }}
-                    />
-                  </button>
-                ))}
+                {galleryImages.map((img, idx) => {
+                  const isThumbBest = bestShots.includes(img);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImgIndex(idx)}
+                      className={`relative w-20 aspect-video rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                        activeImgIndex === idx
+                          ? 'border-amber-500 ring-2 ring-amber-500/40 scale-105'
+                          : 'border-stone-700/60 opacity-60 hover:opacity-100 hover:border-stone-400'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className={`w-full h-full ${fitMode === 'contain' ? 'object-contain p-0.5 bg-stone-950' : 'object-cover'}`}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
+                        }}
+                      />
+                      {isThumbBest && (
+                        <span className="absolute top-1 left-1 p-0.5 rounded bg-amber-400 text-stone-950 shadow z-10">
+                          <Star className="w-2.5 h-2.5 fill-stone-950" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -297,28 +386,63 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         {isLightboxOpen && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between text-white z-10">
+            <div className="flex flex-wrap items-center justify-between text-white z-10 gap-2">
               <div className="flex items-center gap-3">
                 <Camera className="w-5 h-5 text-amber-400" />
                 <div>
-                  <h4 className="font-bold text-sm text-stone-100">{project.title} — Screenshot Gallery</h4>
-                  <p className="text-xs font-mono text-stone-400">{activeImgIndex + 1} of {galleryImages.length}</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm text-stone-100">{project.title}</h4>
+                    {isCurrentBest && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-mono font-extrabold text-[10px] flex items-center gap-1 shadow">
+                        <Star className="w-2.5 h-2.5 fill-stone-950" />
+                        <span>Best Shot</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-mono text-stone-400">{activeImgIndex + 1} of {galleryImages.length} Screenshots</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsLightboxOpen(false)}
-                className="p-2.5 rounded-full bg-stone-800 hover:bg-stone-700 text-white transition-colors cursor-pointer"
-              >
-                <X className="w-6 h-6" />
-              </button>
+
+              {/* Lightbox Controls */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-stone-900 p-1 rounded-xl border border-stone-800">
+                  <button
+                    onClick={() => setFitMode('contain')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                      fitMode === 'contain' ? 'bg-amber-500 text-stone-950 font-extrabold shadow' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    <Maximize className="w-3.5 h-3.5" />
+                    <span>Full 100%</span>
+                  </button>
+                  <button
+                    onClick={() => setFitMode('cover')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                      fitMode === 'cover' ? 'bg-amber-500 text-stone-950 font-extrabold shadow' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    <Crop className="w-3.5 h-3.5" />
+                    <span>Crop Fill</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsLightboxOpen(false)}
+                  className="p-2.5 rounded-full bg-stone-800 hover:bg-stone-700 text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {/* Main Fullscreen Image Container */}
-            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden">
+            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden bg-stone-950/80 rounded-2xl border border-stone-800">
               <img
                 src={currentImage}
                 alt={`${project.title} Fullscreen Screenshot`}
-                className="max-h-[82vh] max-w-full object-contain rounded-xl border border-stone-800 shadow-2xl"
+                className={`max-h-[80vh] max-w-full rounded-xl border border-stone-800 shadow-2xl transition-all ${
+                  fitMode === 'contain' ? 'object-contain p-2' : 'object-cover w-full h-full'
+                }`}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = getFallbackScreenshot(project.category, project.title, project.techStack);
                 }}
@@ -328,13 +452,13 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 <>
                   <button
                     onClick={handlePrev}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl z-10"
                   >
                     <ChevronLeft className="w-7 h-7" />
                   </button>
                   <button
                     onClick={handleNext}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-stone-900/80 hover:bg-amber-600 text-white border border-stone-700 transition-all cursor-pointer shadow-2xl z-10"
                   >
                     <ChevronRight className="w-7 h-7" />
                   </button>
@@ -345,19 +469,27 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             {/* Lightbox Footer Thumbnail Bar */}
             {galleryImages.length > 1 && (
               <div className="flex items-center justify-center gap-2 overflow-x-auto py-2 z-10">
-                {galleryImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveImgIndex(idx)}
-                    className={`w-16 aspect-video rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                      activeImgIndex === idx
-                        ? 'border-amber-400 scale-110 ring-2 ring-amber-400/50'
-                        : 'border-stone-700 opacity-50 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                {galleryImages.map((img, idx) => {
+                  const isThumbBest = bestShots.includes(img);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImgIndex(idx)}
+                      className={`relative w-16 aspect-video rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                        activeImgIndex === idx
+                          ? 'border-amber-400 scale-110 ring-2 ring-amber-400/50'
+                          : 'border-stone-700 opacity-50 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                      {isThumbBest && (
+                        <span className="absolute top-0.5 left-0.5 p-0.5 rounded bg-amber-400 text-stone-950 shadow z-10">
+                          <Star className="w-2 h-2 fill-stone-950" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, CheckCircle2, AlertCircle, Search, Layers, FileText, Camera, Image, ExternalLink } from 'lucide-react';
+import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, CheckCircle2, AlertCircle, Search, Layers, FileText, Camera, Image, ExternalLink, Star, Crop, Maximize } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
@@ -29,6 +29,8 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [liveUrl, setLiveUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [bestImages, setBestImages] = useState<string[]>([]);
+  const [fitMode, setFitMode] = useState<'contain' | 'cover'>('contain');
   const [newCustomImageUrl, setNewCustomImageUrl] = useState('');
   const [featured, setFeatured] = useState(false);
   const [androidPackageName, setAndroidPackageName] = useState('');
@@ -68,7 +70,10 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setGithubUrl(projectToEdit.githubUrl);
       setLiveUrl(projectToEdit.liveUrl || '');
       setImageUrl(projectToEdit.imageUrl);
-      setImages(projectToEdit.images && projectToEdit.images.length > 0 ? projectToEdit.images : (projectToEdit.imageUrl ? [projectToEdit.imageUrl] : []));
+      const loadedImages = projectToEdit.images && projectToEdit.images.length > 0 ? projectToEdit.images : (projectToEdit.imageUrl ? [projectToEdit.imageUrl] : []);
+      setImages(loadedImages);
+      setBestImages(projectToEdit.bestImages && projectToEdit.bestImages.length > 0 ? projectToEdit.bestImages : (loadedImages.length > 0 ? [loadedImages[0]] : []));
+      setFitMode(projectToEdit.fitMode || 'contain');
       setFeatured(projectToEdit.featured);
       setAndroidPackageName(projectToEdit.androidPackageName || '');
       setHighlightsInput((projectToEdit.highlights || []).join('\n'));
@@ -92,6 +97,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setGithubUrl('https://github.com/kirlouswael/my-new-project');
       setLiveUrl('https://demo.vercel.app');
       setImageUrl(presetImages[0].url);
+      setImages([presetImages[0].url]);
+      setBestImages([presetImages[0].url]);
+      setFitMode('contain');
       setFeatured(false);
       setAndroidPackageName('com.kirlous.myapp');
       setHighlightsInput('Responsive clean architecture\nHigh performance scores');
@@ -248,6 +256,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
     const finalImages = images.length > 0 ? images : (imageUrl ? [imageUrl] : []);
     const finalPrimaryImage = imageUrl || (finalImages[0] || '');
+    const finalBestImages = bestImages.length > 0 
+      ? bestImages.filter(img => finalImages.includes(img))
+      : (finalPrimaryImage ? [finalPrimaryImage] : []);
 
     const seoMetadata: SEOMetadata | undefined = metaTitle || metaDescription ? {
       metaTitle: metaTitle || title,
@@ -268,6 +279,8 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       liveUrl,
       imageUrl: finalPrimaryImage,
       images: finalImages,
+      bestImages: finalBestImages,
+      fitMode,
       featured,
       androidPackageName: category === 'Android' ? androidPackageName : undefined,
       highlights,
@@ -507,6 +520,45 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                 </button>
               </div>
 
+              {/* Image Fit Display Mode Selector */}
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-stone-800 bg-stone-950/60">
+                <div className="flex items-center gap-2">
+                  <Crop className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <span className="text-xs font-bold text-stone-200 block">Screenshot Display Fit Mode</span>
+                    <span className="text-[10px] text-stone-400">Choose how screenshots fit inside frames (prevents header/footer cropping)</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 bg-stone-900 p-1 rounded-lg border border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setFitMode('contain')}
+                    className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                      fitMode === 'contain'
+                        ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
+                    title="Shows 100% of the screenshot without cropping top/bottom/sides"
+                  >
+                    <Maximize className="w-3 h-3" />
+                    <span>Complete (Contain)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFitMode('cover')}
+                    className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                      fitMode === 'cover'
+                        ? 'bg-amber-500 text-stone-950 font-extrabold shadow'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
+                    title="Fills frame area completely (may crop overflow)"
+                  >
+                    <Crop className="w-3 h-3" />
+                    <span>Crop Fill (Cover)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Primary Image Input */}
               <div className="space-y-1">
                 <span className="text-[11px] font-mono font-semibold text-stone-300">Cover / Primary Image URL:</span>
@@ -530,31 +582,75 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
               {/* Multi-Screenshot Gallery Thumbnails Grid */}
               {images.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-[11px] font-mono font-semibold text-stone-400">Active Gallery Screenshots:</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono font-semibold text-stone-400">
+                      Active Gallery Screenshots ({images.length}) — <span className="text-amber-400 font-bold">⭐ {bestImages.length} Marked as Best Shots</span>
+                    </span>
+                    {images.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setBestImages([...images])}
+                        className="text-[10px] text-amber-400 hover:underline font-mono cursor-pointer"
+                      >
+                        ⭐ Mark All as Best
+                      </button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {images.map((img, idx) => {
                       const isPrimary = img === imageUrl;
+                      const isBest = bestImages.includes(img);
                       return (
                         <div
                           key={idx}
                           className={`group relative rounded-xl border overflow-hidden bg-stone-950 transition-all ${
-                            isPrimary ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-stone-800 hover:border-stone-600'
+                            isPrimary
+                              ? 'border-amber-500 ring-2 ring-amber-500/30'
+                              : isBest
+                              ? 'border-amber-500/60'
+                              : 'border-stone-800 hover:border-stone-600'
                           }`}
                         >
                           <div className="aspect-video w-full relative overflow-hidden bg-stone-900">
                             <img
                               src={img}
                               alt={`Screenshot ${idx + 1}`}
-                              className="w-full h-full object-cover"
+                              className={`w-full h-full ${fitMode === 'contain' ? 'object-contain p-1 bg-stone-950' : 'object-cover'}`}
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = getFallbackScreenshot(category, title, techStackInput.split(','));
                               }}
                             />
-                            {isPrimary && (
-                              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-amber-500 text-stone-950 font-mono font-bold text-[9px] shadow">
-                                Cover
-                              </span>
-                            )}
+                            <div className="absolute top-1 left-1 flex flex-col gap-1 items-start">
+                              {isPrimary && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500 text-stone-950 font-mono font-bold text-[9px] shadow">
+                                  Cover
+                                </span>
+                              )}
+                              {isBest && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-400 text-stone-950 font-mono font-bold text-[9px] shadow flex items-center gap-0.5">
+                                  <Star className="w-2.5 h-2.5 fill-stone-950" />
+                                  <span>Best Shot</span>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Quick Star Toggle Button Overlay */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isBest) {
+                                  setBestImages(bestImages.filter(b => b !== img));
+                                } else {
+                                  setBestImages([...bestImages, img]);
+                                }
+                              }}
+                              className={`absolute top-1 right-1 p-1 rounded-full cursor-pointer transition-transform active:scale-90 ${
+                                isBest ? 'bg-amber-500 text-stone-950 shadow-md' : 'bg-stone-900/80 text-stone-400 hover:text-amber-400'
+                              }`}
+                              title={isBest ? 'Unmark as Best Screenshot' : 'Mark as Best Screenshot ⭐'}
+                            >
+                              <Star className={`w-3.5 h-3.5 ${isBest ? 'fill-stone-950' : ''}`} />
+                            </button>
                           </div>
                           
                           {/* Hover Actions */}
@@ -566,13 +662,32 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                                 isPrimary ? 'bg-amber-500/20 text-amber-400' : 'bg-stone-800 text-stone-300 hover:bg-amber-600 hover:text-white'
                               }`}
                             >
-                              {isPrimary ? 'Primary' : 'Make Cover'}
+                              {isPrimary ? 'Cover' : 'Set Cover'}
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isBest) {
+                                  setBestImages(bestImages.filter(b => b !== img));
+                                } else {
+                                  setBestImages([...bestImages, img]);
+                                }
+                              }}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold flex items-center gap-0.5 cursor-pointer transition-colors ${
+                                isBest ? 'bg-amber-500/30 text-amber-300 border border-amber-500/40' : 'bg-stone-800 text-stone-400 hover:text-amber-400'
+                              }`}
+                            >
+                              <Star className={`w-2.5 h-2.5 ${isBest ? 'fill-amber-300' : ''}`} />
+                              <span>{isBest ? 'Best' : 'Mark Best'}</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
                                 const filtered = images.filter((_, i) => i !== idx);
                                 setImages(filtered);
+                                setBestImages(bestImages.filter(b => b !== img));
                                 if (isPrimary && filtered.length > 0) {
                                   setImageUrl(filtered[0]);
                                 }

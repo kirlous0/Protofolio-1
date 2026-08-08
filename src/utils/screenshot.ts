@@ -131,13 +131,13 @@ export function getProjectScreenshots(options: {
       cleanUrl.includes('.net') ||
       cleanUrl.includes('.org')
     )) {
-      const desktopLive = `https://image.thum.io/get/width/1200/crop/800/noanimate/${cleanUrl}`;
-      const tabletLive = `https://image.thum.io/get/width/900/crop/800/noanimate/${cleanUrl}`;
-      const mobileLive = `https://image.thum.io/get/width/600/crop/900/noanimate/${cleanUrl}`;
+      const desktopLive = `https://image.thum.io/get/width/1200/noanimate/${cleanUrl}`;
+      const tabletLive = `https://image.thum.io/get/width/900/noanimate/${cleanUrl}`;
+      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url`;
 
       if (!list.includes(desktopLive)) list.push(desktopLive);
+      if (!list.includes(microlinkLive)) list.push(microlinkLive);
       if (!list.includes(tabletLive)) list.push(tabletLive);
-      if (!list.includes(mobileLive)) list.push(mobileLive);
     }
   }
 
@@ -205,7 +205,7 @@ export function getWebsiteScreenshotUrl(options: {
       cleanUrl.includes('.org')
     )) {
       // Returns real-time screenshot captured from the Vercel site
-      return `https://image.thum.io/get/width/1200/crop/800/noanimate/${cleanUrl}`;
+      return `https://image.thum.io/get/width/1200/noanimate/${cleanUrl}`;
     }
   }
 
