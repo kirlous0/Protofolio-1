@@ -1,13 +1,57 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import { initialPersonalInfo, initialProjects } from "./src/data/initialData";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json({ limit: "5mb" }));
+
+  // Persistence directory and file paths
+  const DATA_DIR = path.join(process.cwd(), "data");
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
+  const PERSONAL_INFO_FILE = path.join(DATA_DIR, "personalInfo.json");
+  const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
+  const INTEGRATIONS_FILE = path.join(DATA_DIR, "integrations.json");
+
+  function readJsonFile<T>(filePath: string, fallback: T): T {
+    try {
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, "utf-8");
+        return JSON.parse(content) as T;
+      }
+    } catch (err) {
+      console.error(`Error reading ${filePath}:`, err);
+    }
+    return fallback;
+  }
+
+  function writeJsonFile<T>(filePath: string, data: T): void {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+    } catch (err) {
+      console.error(`Error writing ${filePath}:`, err);
+    }
+  }
+
+  // Initialize data files if not present
+  if (!fs.existsSync(PROJECTS_FILE)) {
+    writeJsonFile(PROJECTS_FILE, initialProjects);
+  }
+  if (!fs.existsSync(PERSONAL_INFO_FILE)) {
+    writeJsonFile(PERSONAL_INFO_FILE, initialPersonalInfo);
+  }
+  if (!fs.existsSync(MESSAGES_FILE)) {
+    writeJsonFile(MESSAGES_FILE, []);
+  }
 
   // Initialize Gemini AI Client
   const getGenAIClient = () => {
@@ -28,6 +72,84 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Projects CRUD Server Endpoints
+  app.get("/api/projects", (req, res) => {
+    const projects = readJsonFile(PROJECTS_FILE, initialProjects);
+    res.json({ success: true, projects });
+  });
+
+  app.post("/api/projects", (req, res) => {
+    try {
+      const { projects } = req.body;
+      if (Array.isArray(projects)) {
+        writeJsonFile(PROJECTS_FILE, projects);
+        return res.json({ success: true, projects });
+      }
+      res.status(400).json({ success: false, error: "Invalid projects array." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to save projects." });
+    }
+  });
+
+  app.post("/api/projects/reset", (req, res) => {
+    writeJsonFile(PROJECTS_FILE, initialProjects);
+    res.json({ success: true, projects: initialProjects });
+  });
+
+  // Personal Info Server Endpoints
+  app.get("/api/personal-info", (req, res) => {
+    const info = readJsonFile(PERSONAL_INFO_FILE, initialPersonalInfo);
+    res.json({ success: true, personalInfo: info });
+  });
+
+  app.post("/api/personal-info", (req, res) => {
+    try {
+      const { info } = req.body;
+      if (info && typeof info === "object") {
+        writeJsonFile(PERSONAL_INFO_FILE, info);
+        return res.json({ success: true, personalInfo: info });
+      }
+      res.status(400).json({ success: false, error: "Invalid info object." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to save info." });
+    }
+  });
+
+  // Contact Messages Server Endpoints
+  app.get("/api/messages", (req, res) => {
+    const messages = readJsonFile(MESSAGES_FILE, []);
+    res.json({ success: true, messages });
+  });
+
+  app.post("/api/messages", (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (Array.isArray(messages)) {
+        writeJsonFile(MESSAGES_FILE, messages);
+        return res.json({ success: true, messages });
+      }
+      res.status(400).json({ success: false, error: "Invalid messages array." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to save messages." });
+    }
+  });
+
+  // Integrations Config Server Endpoints
+  app.get("/api/integrations", (req, res) => {
+    const config = readJsonFile(INTEGRATIONS_FILE, {});
+    res.json({ success: true, config });
+  });
+
+  app.post("/api/integrations", (req, res) => {
+    try {
+      const { config } = req.body;
+      writeJsonFile(INTEGRATIONS_FILE, config || {});
+      res.json({ success: true, config: config || {} });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to save integrations." });
+    }
   });
 
   // Smart AI Assistant for Project Metadata

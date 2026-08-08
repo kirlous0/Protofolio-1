@@ -52,6 +52,31 @@ export default function App() {
     setMessages(storageService.getMessages());
   };
 
+  // Sync data with backend server on mount & window focus
+  useEffect(() => {
+    let isMounted = true;
+    const syncData = async () => {
+      const data = await storageService.syncWithServer();
+      if (isMounted) {
+        setProjects(data.projects);
+        setPersonalInfo(data.personalInfo);
+        setMessages(data.messages);
+      }
+    };
+
+    syncData();
+
+    const handleFocus = () => {
+      syncData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   // Scroll section listener
   useEffect(() => {
     const sections = ['hero', 'about', 'skills', 'services', 'projects', 'contact'];
