@@ -97,11 +97,12 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         srcSet={srcSet}
         sizes={sizes}
         alt={alt}
+        data-status={isLoaded ? 'loaded' : 'loading'}
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         onLoad={handleLoad}
         onError={handleError}
-        className={`w-full h-full transition-opacity duration-300 ${fitClass} ${
+        className={`w-full h-full transition-opacity duration-500 ${fitClass} ${
           isLoaded ? 'opacity-100' : 'opacity-0'
         } ${className}`}
         {...restProps}
