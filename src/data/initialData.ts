@@ -93,10 +93,10 @@ export const initialProjects: Project[] = [
   {
     id: 'proj-1',
     title: 'Kirlous Developer Portfolio & Studio',
-    description: 'Modern, high-performance portfolio platform featuring live Vercel deployments, Android simulator, and AI project enhancer.',
-    longDescription: 'A modern developer portfolio built for Kirlous Wael with React, TypeScript, and Tailwind CSS. Integrated with GitHub & Vercel live APIs, local persistence, Android app simulator, and AI project analysis.',
+    description: 'Modern, high-performance portfolio platform featuring live Vercel deployments, interactive project browser, Android simulator, and AI project enhancer.',
+    longDescription: '## 🚀 What is Kirlous Developer Portfolio & Studio?\nAn interactive developer portfolio built for Kirlous Wael with React, TypeScript, and Tailwind CSS. Integrated with GitHub & Vercel live APIs, local persistence, Android app simulator, and AI project analysis.\n\n## 💡 Key Architectural Highlights\n- **Real-Time Data Sync**: Firebase Firestore integration for cross-device updates.\n- **Interactive Android Simulator**: In-browser mobile device preview running Jetpack Compose UI apps.\n- **AI Assistant**: Powered by Google Gemini AI for automated project analysis and case study generation.',
     category: 'Web',
-    techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Vercel', 'Node.js'],
+    techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Vercel', 'Node.js', 'Firebase'],
     githubUrl: 'https://github.com/kirlouswael/portfolio',
     liveUrl: 'https://kirlous-portfolio.vercel.app',
     imageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
@@ -124,7 +124,7 @@ export const initialProjects: Project[] = [
     id: 'proj-2',
     title: 'FitPulse Android Fitness & Health Tracker',
     description: 'Native Android mobile application built with Kotlin and Jetpack Compose featuring offline Room DB and Firebase sync.',
-    longDescription: 'FitPulse is a modern Android application engineered with Kotlin, Jetpack Compose, Coroutines, and Room local SQLite database. Includes workout logging, step tracking, custom charts, and Firebase real-time user authentication.',
+    longDescription: '## 🚀 What is FitPulse Android?\nFitPulse is a modern Android application engineered with Kotlin, Jetpack Compose, Coroutines, and Room local SQLite database. Includes workout logging, step tracking, custom health charts, and Firebase real-time user authentication.\n\n## 💡 Mobile Architecture\n- **Declarative UI**: Built with Jetpack Compose & Material 3.\n- **Offline-First**: Powered by Room SQLite and Kotlin Flow streams.',
     category: 'Android',
     techStack: ['Kotlin', 'Jetpack Compose', 'Room DB', 'Firebase', 'Android SDK'],
     githubUrl: 'https://github.com/kirlouswael/fitpulse-android',
@@ -155,7 +155,7 @@ export const initialProjects: Project[] = [
     id: 'proj-3',
     title: 'Nexus Analytics & E-Commerce Dashboard',
     description: 'Full-stack enterprise management dashboard with live metrics, sales analytics, and dynamic inventory system.',
-    longDescription: 'Enterprise-grade full-stack dashboard built with Next.js, TypeScript, Express API routes, and PostgreSQL database. Provides real-time revenue analytics, order tracking, product inventory controls, and automated reporting.',
+    longDescription: '## 🚀 What is Nexus Analytics?\nEnterprise-grade full-stack dashboard built with Next.js, TypeScript, Express API routes, and PostgreSQL database. Provides real-time revenue analytics, order tracking, product inventory controls, and automated business reporting.',
     category: 'Full Stack',
     techStack: ['Next.js', 'React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS'],
     githubUrl: 'https://github.com/kirlouswael/nexus-analytics',
@@ -179,6 +179,65 @@ export const initialProjects: Project[] = [
       '🔐 Secure Role-based JWT Authentication',
       '⚡ Express & PostgreSQL High-Performance API',
       '📷 Full Screen Lightbox & Responsive Screenshot Gallery'
+    ]
+  },
+  {
+    id: 'proj-4',
+    title: 'Nile Store - E-Commerce Engine & Merchant Portal',
+    description: 'High-converting digital storefront with instant category search, optimistic shopping cart, and multi-currency checkout.',
+    longDescription: '## 🚀 What is Nile Store?\nNile Store is a modern e-commerce application featuring an intuitive storefront, real-time product filtering, persistent shopping cart state, and a merchant admin portal for managing product inventories and promotional campaigns.',
+    category: 'Web',
+    techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Redux Toolkit', 'REST API'],
+    githubUrl: 'https://github.com/kirlouswael/nile-store',
+    liveUrl: 'https://nile-store.vercel.app',
+    imageUrl: 'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80'
+    ],
+    bestImages: [
+      'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80'
+    ],
+    fitMode: 'contain',
+    featured: false,
+    createdAt: '2026-05-10',
+    highlights: [
+      '🛒 Optimistic Shopping Cart with Instant Price Calculations',
+      '🔍 Real-Time Product Catalog Filter & Search Indexing',
+      '💳 Secure Multi-Step Checkout Workflow',
+      '📱 Responsive Design Across Desktop & Mobile Viewports'
+    ]
+  },
+  {
+    id: 'proj-5',
+    title: 'MindGenius - Gemini AI Task & Knowledge Assistant',
+    description: 'Intelligent AI workspace powered by Google Gemini API providing automated content summarization and structured code analysis.',
+    longDescription: '## 🚀 What is MindGenius?\nMindGenius is a generative AI companion built with Google Gemini 2.5 Flash. It provides structured JSON reasoning, markdown document generation, live code snippet execution analysis, and contextual conversation memory.',
+    category: 'Full Stack',
+    techStack: ['React', 'TypeScript', 'Node.js', 'Google Gemini API', 'Tailwind CSS'],
+    githubUrl: 'https://github.com/kirlouswael/mindgenius-ai',
+    liveUrl: 'https://mindgenius-ai.vercel.app',
+    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80'
+    ],
+    bestImages: [
+      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80'
+    ],
+    fitMode: 'contain',
+    featured: true,
+    createdAt: '2026-04-18',
+    highlights: [
+      '🤖 Powered by Google Gemini AI API with JSON Schema Validation',
+      '⚡ Real-time Markdown Streaming & Syntax Highlighting',
+      '🧠 Contextual Memory Buffer for Multi-Turn AI Reasoning',
+      '🎨 Custom Dark Theme UI with Glassmorphism Accents'
     ]
   }
 ];

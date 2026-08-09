@@ -195,65 +195,87 @@ Return a structured JSON object:
 8. "highlights": Array of 4-5 impressive technical achievement bullet points (e.g. "Achieved sub-100ms API response latency using optimistic data caching").
 9. "seoMetadata": Full search engine optimization object (metaTitle, metaDescription, ogTitle, ogDescription, ogType, keywords).`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: promptText,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          autoTitle: { type: Type.STRING },
+          problem: { type: Type.STRING },
+          solution: { type: Type.STRING },
+          keyFeatures: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          enhancedDescription: { type: Type.STRING },
+          longDescription: { type: Type.STRING },
+          techStack: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          highlights: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+          seoMetadata: {
             type: Type.OBJECT,
             properties: {
-              autoTitle: { type: Type.STRING },
-              problem: { type: Type.STRING },
-              solution: { type: Type.STRING },
-              keyFeatures: {
+              metaTitle: { type: Type.STRING },
+              metaDescription: { type: Type.STRING },
+              ogTitle: { type: Type.STRING },
+              ogDescription: { type: Type.STRING },
+              ogType: { type: Type.STRING },
+              keywords: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
-              },
-              enhancedDescription: { type: Type.STRING },
-              longDescription: { type: Type.STRING },
-              techStack: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-              highlights: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-              seoMetadata: {
-                type: Type.OBJECT,
-                properties: {
-                  metaTitle: { type: Type.STRING },
-                  metaDescription: { type: Type.STRING },
-                  ogTitle: { type: Type.STRING },
-                  ogDescription: { type: Type.STRING },
-                  ogType: { type: Type.STRING },
-                  keywords: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                  },
-                },
-                required: ["metaTitle", "metaDescription", "ogTitle", "ogDescription", "ogType", "keywords"],
               },
             },
-            required: [
-              "autoTitle",
-              "problem",
-              "solution",
-              "keyFeatures",
-              "enhancedDescription",
-              "longDescription",
-              "techStack",
-              "highlights",
-              "seoMetadata",
-            ],
+            required: ["metaTitle", "metaDescription", "ogTitle", "ogDescription", "ogType", "keywords"],
           },
         },
-      });
+        required: [
+          "autoTitle",
+          "problem",
+          "solution",
+          "keyFeatures",
+          "enhancedDescription",
+          "longDescription",
+          "techStack",
+          "highlights",
+          "seoMetadata",
+        ],
+      };
 
-      const rawJson = response.text || "{}";
-      const parsedData = JSON.parse(rawJson);
-      res.json({ success: true, data: parsedData });
+      const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      let parsedData: any = null;
+      let lastErr: any = null;
+
+      for (const modelName of candidateModels) {
+        try {
+          console.log(`Executing Gemini AI project enhancement with model: ${modelName}`);
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: promptText,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: schema,
+            },
+          });
+
+          if (response && response.text) {
+            parsedData = JSON.parse(response.text);
+            console.log(`Successfully generated project metadata using model: ${modelName}`);
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`Model ${modelName} failed, trying next fallback...`, err?.message || err);
+          lastErr = err;
+        }
+      }
+
+      if (parsedData) {
+        return res.json({ success: true, data: parsedData });
+      }
+
+      throw lastErr || new Error("All Gemini AI models failed to generate content.");
     } catch (error: any) {
       console.error("Gemini AI Enhancement Error:", error);
       res.status(500).json({

@@ -171,7 +171,31 @@ export function getProjectScreenshots(options: {
   const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [], imageUrl, existingImages } = options;
   const list: string[] = [];
 
-  // 1. Captured Live Deployment Screenshots with 4s delay & forced refresh (bypasses initial dark state & animation delays)
+  // 1. Primary HD CDN image or custom imageUrl
+  if (imageUrl && imageUrl.trim()) {
+    if (!list.includes(imageUrl.trim())) {
+      list.push(imageUrl.trim());
+    }
+  }
+
+  // 2. Domain-matched fast HD UI fallback image
+  const primaryFallback = getFallbackScreenshot(category, title, techStack);
+  if (!list.includes(primaryFallback)) {
+    list.push(primaryFallback);
+  }
+
+  // 3. Preserve existing array of images
+  if (Array.isArray(existingImages)) {
+    existingImages.forEach((img) => {
+      if (img && img.trim()) {
+        if (!list.includes(img.trim())) {
+          list.push(img.trim());
+        }
+      }
+    });
+  }
+
+  // 4. Live Deployment Screenshots (thum.io cached version)
   if (liveUrl && liveUrl.trim()) {
     let cleanUrl = liveUrl.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
@@ -188,35 +212,14 @@ export function getProjectScreenshots(options: {
       cleanUrl.includes('.net') ||
       cleanUrl.includes('.org')
     )) {
-      const thumLive = `https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/${cleanUrl}`;
-      const microlinkLive = `https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=4000&force=true`;
-      
-      list.push(thumLive);
-      list.push(microlinkLive);
-    }
-  }
-
-  // 2. Preserve initial primary image if valid and updated with delay if applicable
-  if (imageUrl && imageUrl.trim()) {
-    const updatedPrimary = ensureLiveScreenshotDelay(imageUrl.trim(), 4);
-    if (!list.includes(updatedPrimary)) {
-      list.push(updatedPrimary);
-    }
-  }
-
-  // 3. Preserve existing array of images
-  if (Array.isArray(existingImages)) {
-    existingImages.forEach((img) => {
-      if (img && img.trim()) {
-        const updatedImg = ensureLiveScreenshotDelay(img.trim(), 4);
-        if (!list.includes(updatedImg)) {
-          list.push(updatedImg);
-        }
+      const thumLive = `https://image.thum.io/get/width/1200/crop/800/${cleanUrl}`;
+      if (!list.includes(thumLive) && list.length < 6) {
+        list.push(thumLive);
       }
-    });
+    }
   }
 
-  // 4. Curated HD UI Mockups matching domain
+  // 5. Additional Curated HD UI Mockups matching domain
   const titleLower = title.toLowerCase();
   const stackStr = (Array.isArray(techStack) ? techStack.join(' ') : String(techStack || '')).toLowerCase();
   const seedString = `${titleLower}_${githubUrl || ''}_${category}`;
@@ -237,21 +240,17 @@ export function getProjectScreenshots(options: {
 
   pool.forEach((item, idx) => {
     const selected = pool[(hash + idx) % pool.length];
-    if (!list.includes(selected) && list.length < 5) {
+    if (!list.includes(selected) && list.length < 6) {
       list.push(selected);
     }
   });
-
-  if (list.length === 0) {
-    list.push(getFallbackScreenshot(category, title, techStack));
-  }
 
   return list;
 }
 
 /**
- * Auto-generates a live website screenshot from Vercel deployments or web platforms.
- * Uses 4 seconds delay & forced refresh to capture full page after entrance animations.
+ * Auto-generates a fast, high-definition website screenshot matching category & domain.
+ * Instant CDN loading!
  */
 export function getWebsiteScreenshotUrl(options: {
   liveUrl?: string;
@@ -260,28 +259,7 @@ export function getWebsiteScreenshotUrl(options: {
   title?: string;
   techStack?: string[];
 }): string {
-  const { liveUrl, githubUrl, category = 'Web', title = '', techStack = [] } = options;
-
-  if (liveUrl && liveUrl.trim()) {
-    let cleanUrl = liveUrl.trim();
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = `https://${cleanUrl}`;
-    }
-
-    if (!cleanUrl.includes('github.com/') && (
-      cleanUrl.includes('.vercel.app') ||
-      cleanUrl.includes('.vercel.dev') ||
-      cleanUrl.includes('.app') ||
-      cleanUrl.includes('.com') ||
-      cleanUrl.includes('.io') ||
-      cleanUrl.includes('.dev') ||
-      cleanUrl.includes('.net') ||
-      cleanUrl.includes('.org')
-    )) {
-      return `https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/${cleanUrl}`;
-    }
-  }
-
+  const { category = 'Web', title = '', techStack = [] } = options;
   return getFallbackScreenshot(category, title, techStack);
 }
 

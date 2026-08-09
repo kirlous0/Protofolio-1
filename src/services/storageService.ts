@@ -10,6 +10,21 @@ const PASSCODE_KEY = 'kirlous_admin_passcode_v1';
 const INTEGRATIONS_KEY = 'kirlous_integrations_config_v1';
 const SEEDED_KEY = 'kirlous_projects_seeded_v1';
 
+function withTimeout<T>(promise: Promise<T>, ms = 3000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Firestore timeout')), ms);
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export const storageService = {
   // Sync with Firebase Firestore across browsers & devices
   async syncWithServer(): Promise<{ projects: Project[]; personalInfo: PersonalInfo; messages: ContactMessage[] }> {
@@ -17,49 +32,51 @@ export const storageService = {
     let syncedInfo: PersonalInfo | null = null;
     let syncedMessages: ContactMessage[] | null = null;
 
-    // 1. Try syncing from Firebase Firestore first
+    // 1. Try syncing from Firebase Firestore first (with 3 second timeout for network resilience)
     try {
       if (db) {
-        // Check system status doc to see if database was initialized before
-        const systemDocRef = doc(db, 'system', 'status');
-        const systemSnap = await getDoc(systemDocRef);
+        await withTimeout((async () => {
+          // Check system status doc to see if database was initialized before
+          const systemDocRef = doc(db, 'system', 'status');
+          const systemSnap = await getDoc(systemDocRef);
 
-        if (systemSnap.exists()) {
-          // Database was already seeded. Trust whatever documents are in 'projects' collection (even if empty/0 items).
-          const projectsSnap = await getDocs(collection(db, 'projects'));
-          syncedProjects = projectsSnap.docs.map(d => ({ ...d.data() } as Project));
-        } else {
-          // First time seeding Firestore with initial default projects
-          const batch = writeBatch(db);
-          initialProjects.forEach(p => {
-            const ref = doc(db, 'projects', p.id);
-            batch.set(ref, p);
-          });
-          batch.set(systemDocRef, { seeded: true, createdAt: new Date().toISOString() });
-          await batch.commit();
-          syncedProjects = initialProjects;
-        }
+          if (systemSnap.exists()) {
+            // Database was already seeded. Trust whatever documents are in 'projects' collection (even if empty/0 items).
+            const projectsSnap = await getDocs(collection(db, 'projects'));
+            syncedProjects = projectsSnap.docs.map(d => ({ ...d.data() } as Project));
+          } else {
+            // First time seeding Firestore with initial default projects
+            const batch = writeBatch(db);
+            initialProjects.forEach(p => {
+              const ref = doc(db, 'projects', p.id);
+              batch.set(ref, p);
+            });
+            batch.set(systemDocRef, { seeded: true, createdAt: new Date().toISOString() });
+            await batch.commit();
+            syncedProjects = initialProjects;
+          }
 
-        // Fetch Personal Info
-        const infoDocSnap = await getDoc(doc(db, 'personalInfo', 'main'));
-        if (infoDocSnap.exists()) {
-          syncedInfo = infoDocSnap.data() as PersonalInfo;
-        } else {
-          await setDoc(doc(db, 'personalInfo', 'main'), initialPersonalInfo);
-          syncedInfo = initialPersonalInfo;
-        }
+          // Fetch Personal Info
+          const infoDocSnap = await getDoc(doc(db, 'personalInfo', 'main'));
+          if (infoDocSnap.exists()) {
+            syncedInfo = infoDocSnap.data() as PersonalInfo;
+          } else {
+            await setDoc(doc(db, 'personalInfo', 'main'), initialPersonalInfo);
+            syncedInfo = initialPersonalInfo;
+          }
 
-        // Fetch Messages
-        const msgSnap = await getDocs(collection(db, 'messages'));
-        if (!msgSnap.empty) {
-          syncedMessages = msgSnap.docs.map(d => ({ ...d.data() } as ContactMessage));
-          syncedMessages.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-        } else {
-          syncedMessages = [];
-        }
+          // Fetch Messages
+          const msgSnap = await getDocs(collection(db, 'messages'));
+          if (!msgSnap.empty) {
+            syncedMessages = msgSnap.docs.map(d => ({ ...d.data() } as ContactMessage));
+            syncedMessages.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          } else {
+            syncedMessages = [];
+          }
+        })(), 3000);
       }
     } catch (e) {
-      console.warn('Firestore fetch encountered an issue, falling back to local server/localStorage:', e);
+      console.warn('Firestore fetch encountered an issue or timeout, falling back to local server/localStorage:', e);
     }
 
     // Update localStorage if Firestore sync succeeded
@@ -175,23 +192,50 @@ export const storageService = {
     if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge missing initial default projects if user hasn't deleted them
+          const existingIds = new Set(parsed.map((p: Project) => p.id));
+          let updated = [...parsed];
+          let changed = false;
+
+          initialProjects.forEach((initProj) => {
+            if (!existingIds.has(initProj.id)) {
+              updated.push(initProj);
+              changed = true;
+            }
+          });
+
+          // Ensure any project with boilerplate generic description gets upgraded to bespoke description
+          updated = updated.map((p: Project) => {
+            if (p.description && (p.description.includes('Modern application built with cutting-edge') || p.description.includes('Modern high-performance application'))) {
+              const matchedInit = initialProjects.find(i => i.id === p.id);
+              if (matchedInit) {
+                changed = true;
+                return {
+                  ...p,
+                  description: matchedInit.description,
+                  longDescription: matchedInit.longDescription,
+                };
+              }
+            }
+            return p;
+          });
+
+          if (changed) {
+            localStorage.setItem(PROJECTS_KEY, JSON.stringify(updated));
+          }
+
+          return updated;
         }
       } catch {
         // Fall through
       }
     }
 
-    // If never stored before, check if seeded
-    const isSeeded = localStorage.getItem(SEEDED_KEY);
-    if (!isSeeded) {
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(initialProjects));
-      localStorage.setItem(SEEDED_KEY, 'true');
-      return initialProjects;
-    }
-
-    return [];
+    // Default seed
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(initialProjects));
+    localStorage.setItem(SEEDED_KEY, 'true');
+    return initialProjects;
   },
 
   saveProjects(projects: Project[]): void {

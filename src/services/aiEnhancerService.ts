@@ -66,22 +66,28 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
   // Domain-specific tailored problem, solution, features, and description generation
   const lowerTitle = cleanTitle.toLowerCase();
   const lowerReadme = readme.toLowerCase();
+  const lowerRawDesc = rawDesc.toLowerCase();
+  const stackSummary = techArray.slice(0, 4).join(', ');
 
-  let domainConcept = `${cleanTitle} is an advanced ${category.toLowerCase()} application designed to provide intuitive user workflows, high data throughput, and a polished interactive interface.`;
-  let domainProblem = `Addressing the need for high-performance, real-time responsive user interfaces with reliable state management and minimal latency across varied client environments.`;
-  let domainSolution = `Engineered a modular ${category} solution utilizing ${techArray.slice(0, 3).join(', ')} to provide seamless state synchronization, client-side caching, and responsive UI layouts.`;
+  // Dynamic project description builder based on title, description & stack
+  let domainConcept = rawDesc && !rawDesc.includes('cutting-edge') && !rawDesc.includes('Modern high-performance application')
+    ? `${cleanTitle} is a ${category.toLowerCase()} project built with ${stackSummary}. ${rawDesc}`
+    : `${cleanTitle} is a specialized ${category.toLowerCase()} application engineered using ${stackSummary} to streamline ${cleanTitle.toLowerCase()} workflows, deliver responsive user interactions, and ensure reliable data management.`;
+
+  let domainProblem = `Developers and users need a responsive, reliable ${category.toLowerCase()} interface for ${cleanTitle} without performance lag, state inconsistencies, or complex setup hurdles.`;
+  let domainSolution = `Architected a modern ${category} solution using ${stackSummary} with optimized component hierarchies, clean architecture patterns, and seamless data binding.`;
 
   let domainFeatures = [
-    `Interactive, responsive user interface built with ${techArray[0] || 'Modern Frontend'} for smooth multi-device experience`,
-    `Optimized state management and efficient data fetching architecture with instant reactivity`,
-    `Robust error handling, input validation, and clean component-driven design patterns`,
-    `Modular architecture facilitating easy feature expansion and high code maintainability`,
+    `Interactive, responsive user interface built with ${techArray[0] || 'Modern Tech Stack'} for a smooth multi-device experience`,
+    `Optimized state management and efficient data workflows tailored specifically for ${cleanTitle}`,
+    `Robust error handling, clean component design, and scalable code organization`,
+    `Performance-first engineering with instant reactivity and low memory overhead`,
   ];
 
-  if (lowerTitle.includes('shop') || lowerTitle.includes('store') || lowerTitle.includes('e-commerce') || lowerTitle.includes('nile') || lowerReadme.includes('cart')) {
+  if (lowerTitle.includes('shop') || lowerTitle.includes('store') || lowerTitle.includes('e-commerce') || lowerTitle.includes('nile') || lowerReadme.includes('cart') || lowerRawDesc.includes('e-commerce')) {
     domainConcept = `${cleanTitle} is a modern, scalable e-commerce digital storefront enabling seamless product browsing, shopping cart management, secure checkout workflows, and administrative product control.`;
     domainProblem = `Online shoppers demand instantaneous page load times, friction-free shopping cart updates, and reliable order state tracking without complex checkout hurdles.`;
-    domainSolution = `Architected a high-converting digital storefront using ${techArray.slice(0, 3).join(', ')} featuring optimistic UI cart updates, dynamic product filtering, and scalable state persistence.`;
+    domainSolution = `Architected a high-converting digital storefront using ${stackSummary} featuring optimistic UI cart updates, dynamic product filtering, and scalable state persistence.`;
     domainFeatures = [
       `Dynamic product catalog with instant category filtering and real-time search indexing`,
       `Interactive shopping cart with optimistic state updates and persistent item storage`,
@@ -101,7 +107,7 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
   } else if (lowerTitle.includes('dashboard') || lowerTitle.includes('admin') || lowerTitle.includes('analytics') || lowerTitle.includes('metrics') || lowerReadme.includes('chart')) {
     domainConcept = `${cleanTitle} is a comprehensive analytics and management dashboard offering real-time data visualization, KPI tracking, and administrative control tools.`;
     domainProblem = `Consolidating disparate data feeds into a clear, performant executive dashboard without causing visual clutter or rendering bottlenecks.`;
-    domainSolution = `Built an interactive control panel using ${techArray.slice(0, 3).join(', ')} with memoized chart components, dynamic metric filters, and dark mode theme switching.`;
+    domainSolution = `Built an interactive control panel using ${stackSummary} with memoized chart components, dynamic metric filters, and dark mode theme switching.`;
     domainFeatures = [
       `Interactive data visualization charts with customizable date range filters`,
       `Real-time KPI metrics panel tracking active sessions, conversion rates, and revenue`,
@@ -117,6 +123,16 @@ export function generateClientSideAIEnhancement(input: AIEnhanceInput): AIEnhanc
       `Offline-first architecture powered by Room SQLite database and Flow state streams`,
       `Asynchronous background processing using Kotlin Coroutines and WorkManager`,
       `Optimized memory consumption and battery efficiency under heavy workload`,
+    ];
+  } else if (lowerTitle.includes('portfolio') || lowerTitle.includes('studio') || lowerTitle.includes('resume')) {
+    domainConcept = `${cleanTitle} is an interactive developer portfolio platform showcasing live web apps, full-stack architectures, and native Android applications with real-time database sync and interactive simulators.`;
+    domainProblem = `Engineers need a modern, dynamic showcase that goes beyond static text, displaying live deployment previews, interactive device emulators, and dynamic admin controls.`;
+    domainSolution = `Engineered a full-featured portfolio with React, TypeScript, Tailwind CSS, Firebase Firestore sync, and an embedded Android simulator.`;
+    domainFeatures = [
+      `Dynamic project filtering and search indexing across Web, Android, and Full Stack categories`,
+      `Interactive project modals with multi-screenshot lightboxes and live embedded browser frames`,
+      `Admin control panel for live project management, skill editing, and message tracking`,
+      `Firebase Firestore database integration for seamless cross-device data synchronization`,
     ];
   }
 

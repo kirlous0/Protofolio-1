@@ -30,15 +30,31 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   ...restProps
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(() => ensureLiveScreenshotDelay(src, 4));
+  const [imgSrc, setImgSrc] = useState(src);
   const [hasError, setHasError] = useState(false);
 
-  // Sync state if src prop changes
+  // Sync state if src prop changes & attach fast fallback timer
   React.useEffect(() => {
-    setImgSrc(ensureLiveScreenshotDelay(src, 4));
+    setImgSrc(src);
     setHasError(false);
     setIsLoaded(false);
-  }, [src]);
+
+    // Fast fallback timer: if screenshot service or slow image takes > 2.5s, switch immediately to instant Unsplash HD UI fallback
+    let isMounted = true;
+    const timer = setTimeout(() => {
+      if (isMounted && !isLoaded) {
+        if (src.includes('image.thum.io') || src.includes('microlink.io') || !src) {
+          const fallback = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
+          setImgSrc(fallback);
+        }
+      }
+    }, 2500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [src, fallbackCategory, fallbackTitle, fallbackTechStack, isLoaded]);
 
   // Determine optimal sizes attribute based on context type
   let defaultSizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
