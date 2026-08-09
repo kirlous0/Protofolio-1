@@ -8,6 +8,7 @@ const MESSAGES_KEY = 'kirlous_portfolio_messages_v1';
 const PERSONAL_INFO_KEY = 'kirlous_portfolio_info_v1';
 const PASSCODE_KEY = 'kirlous_admin_passcode_v1';
 const INTEGRATIONS_KEY = 'kirlous_integrations_config_v1';
+const SEEDED_KEY = 'kirlous_projects_seeded_v1';
 
 export const storageService = {
   // Sync with Firebase Firestore across browsers & devices
@@ -19,17 +20,22 @@ export const storageService = {
     // 1. Try syncing from Firebase Firestore first
     try {
       if (db) {
-        // Fetch Projects
-        const projectsSnap = await getDocs(collection(db, 'projects'));
-        if (!projectsSnap.empty) {
+        // Check system status doc to see if database was initialized before
+        const systemDocRef = doc(db, 'system', 'status');
+        const systemSnap = await getDoc(systemDocRef);
+
+        if (systemSnap.exists()) {
+          // Database was already seeded. Trust whatever documents are in 'projects' collection (even if empty/0 items).
+          const projectsSnap = await getDocs(collection(db, 'projects'));
           syncedProjects = projectsSnap.docs.map(d => ({ ...d.data() } as Project));
         } else {
-          // First time seeding Firestore with initial projects
+          // First time seeding Firestore with initial default projects
           const batch = writeBatch(db);
           initialProjects.forEach(p => {
             const ref = doc(db, 'projects', p.id);
             batch.set(ref, p);
           });
+          batch.set(systemDocRef, { seeded: true, createdAt: new Date().toISOString() });
           await batch.commit();
           syncedProjects = initialProjects;
         }
@@ -48,25 +54,28 @@ export const storageService = {
         if (!msgSnap.empty) {
           syncedMessages = msgSnap.docs.map(d => ({ ...d.data() } as ContactMessage));
           syncedMessages.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+        } else {
+          syncedMessages = [];
         }
       }
     } catch (e) {
       console.warn('Firestore fetch encountered an issue, falling back to local server/localStorage:', e);
     }
 
-    // Update localStorage if Firestore returned valid data
-    if (syncedProjects && syncedProjects.length > 0) {
+    // Update localStorage if Firestore sync succeeded
+    if (syncedProjects !== null) {
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(syncedProjects));
+      localStorage.setItem(SEEDED_KEY, 'true');
     }
-    if (syncedInfo) {
+    if (syncedInfo !== null) {
       localStorage.setItem(PERSONAL_INFO_KEY, JSON.stringify(syncedInfo));
     }
-    if (syncedMessages) {
+    if (syncedMessages !== null) {
       localStorage.setItem(MESSAGES_KEY, JSON.stringify(syncedMessages));
     }
 
-    // 2. Fallback check from Express server endpoints if Firestore didn't produce data
-    if (!syncedProjects || syncedProjects.length === 0) {
+    // 2. Fallback check from Express server endpoints if Firestore did not respond
+    if (syncedProjects === null) {
       try {
         const [projRes, infoRes, msgRes] = await Promise.allSettled([
           fetch('/api/projects').then(r => r.json()),
@@ -74,9 +83,10 @@ export const storageService = {
           fetch('/api/messages').then(r => r.json()),
         ]);
 
-        if (projRes.status === 'fulfilled' && projRes.value?.success && Array.isArray(projRes.value?.projects) && projRes.value.projects.length > 0) {
+        if (projRes.status === 'fulfilled' && projRes.value?.success && Array.isArray(projRes.value?.projects)) {
           syncedProjects = projRes.value.projects;
           localStorage.setItem(PROJECTS_KEY, JSON.stringify(syncedProjects));
+          localStorage.setItem(SEEDED_KEY, 'true');
         }
         if (infoRes.status === 'fulfilled' && infoRes.value?.success && infoRes.value?.personalInfo) {
           syncedInfo = infoRes.value.personalInfo;
@@ -92,9 +102,9 @@ export const storageService = {
     }
 
     return {
-      projects: syncedProjects || this.getProjects(),
-      personalInfo: syncedInfo || this.getPersonalInfo(),
-      messages: syncedMessages || this.getMessages(),
+      projects: syncedProjects !== null ? syncedProjects : this.getProjects(),
+      personalInfo: syncedInfo !== null ? syncedInfo : this.getPersonalInfo(),
+      messages: syncedMessages !== null ? syncedMessages : this.getMessages(),
     };
   },
 
@@ -162,30 +172,63 @@ export const storageService = {
   // Projects CRUD
   getProjects(): Project[] {
     const stored = localStorage.getItem(PROJECTS_KEY);
-    if (!stored) {
-      return initialProjects;
-    }
-    try {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (stored !== null) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch {
+        // Fall through
       }
-      return initialProjects;
-    } catch {
+    }
+
+    // If never stored before, check if seeded
+    const isSeeded = localStorage.getItem(SEEDED_KEY);
+    if (!isSeeded) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(initialProjects));
+      localStorage.setItem(SEEDED_KEY, 'true');
       return initialProjects;
     }
+
+    return [];
   },
 
   saveProjects(projects: Project[]): void {
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    localStorage.setItem(SEEDED_KEY, 'true');
+
     if (db) {
-      const batch = writeBatch(db);
-      projects.forEach(p => {
-        const ref = doc(db, 'projects', p.id);
-        batch.set(ref, p);
-      });
-      batch.commit().catch(() => {});
+      // Sync complete projects list with Firestore
+      (async () => {
+        try {
+          const systemDocRef = doc(db, 'system', 'status');
+          const projectsSnap = await getDocs(collection(db, 'projects'));
+          const existingDocIds = new Set(projectsSnap.docs.map(d => d.id));
+          const newDocIds = new Set(projects.map(p => p.id));
+
+          const batch = writeBatch(db);
+
+          // Delete docs in Firestore that are no longer in projects array
+          existingDocIds.forEach(id => {
+            if (!newDocIds.has(id)) {
+              batch.delete(doc(db, 'projects', id));
+            }
+          });
+
+          // Set all projects in projects array
+          projects.forEach(p => {
+            batch.set(doc(db, 'projects', p.id), p);
+          });
+
+          batch.set(systemDocRef, { seeded: true, updatedAt: new Date().toISOString() });
+          await batch.commit();
+        } catch (err) {
+          console.error('Error syncing projects to Firestore:', err);
+        }
+      })();
     }
+
     fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -203,9 +246,6 @@ export const storageService = {
     };
     const updated = [newProject, ...projects];
     this.saveProjects(updated);
-    if (db) {
-      setDoc(doc(db, 'projects', id), newProject).catch(() => {});
-    }
     return newProject;
   },
 
@@ -217,9 +257,6 @@ export const storageService = {
     const updatedProject = { ...projects[index], ...updatedData };
     projects[index] = updatedProject;
     this.saveProjects(projects);
-    if (db) {
-      setDoc(doc(db, 'projects', id), updatedProject, { merge: true }).catch(() => {});
-    }
     return updatedProject;
   },
 
@@ -227,23 +264,11 @@ export const storageService = {
     const projects = this.getProjects();
     const filtered = projects.filter(p => p.id !== id);
     this.saveProjects(filtered);
-    if (db) {
-      deleteDoc(doc(db, 'projects', id)).catch(() => {});
-    }
     return true;
   },
 
   resetProjectsToDefault(): Project[] {
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(initialProjects));
-    if (db) {
-      const batch = writeBatch(db);
-      initialProjects.forEach(p => {
-        const ref = doc(db, 'projects', p.id);
-        batch.set(ref, p);
-      });
-      batch.commit().catch(() => {});
-    }
-    fetch('/api/projects/reset', { method: 'POST' }).catch(() => {});
+    this.saveProjects(initialProjects);
     return initialProjects;
   },
 
