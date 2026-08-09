@@ -192,21 +192,10 @@ export const storageService = {
     if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge missing initial default projects if user hasn't deleted them
-          const existingIds = new Set(parsed.map((p: Project) => p.id));
-          let updated = [...parsed];
-          let changed = false;
-
-          initialProjects.forEach((initProj) => {
-            if (!existingIds.has(initProj.id)) {
-              updated.push(initProj);
-              changed = true;
-            }
-          });
-
+        if (Array.isArray(parsed)) {
           // Ensure any project with boilerplate generic description gets upgraded to bespoke description
-          updated = updated.map((p: Project) => {
+          let changed = false;
+          const updated = parsed.map((p: Project) => {
             if (p.description && (p.description.includes('Modern application built with cutting-edge') || p.description.includes('Modern high-performance application'))) {
               const matchedInit = initialProjects.find(i => i.id === p.id);
               if (matchedInit) {
