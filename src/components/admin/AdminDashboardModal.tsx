@@ -92,6 +92,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     }
   };
 
+  const handleWipeSite = () => {
+    if (confirm('⚠️ WARNING: Are you sure you want to completely WIPE all data from the site (projects, inbox messages, and storage)? This action cannot be undone.')) {
+      if (confirm('Confirm FULL WIPE once more to delete all content?')) {
+        storageService.wipeAllData();
+        onRefreshData();
+      }
+    }
+  };
+
   const handleDeleteMessage = (id: string) => {
     storageService.deleteMessage(id);
     onRefreshData();
@@ -604,39 +613,73 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </form>
                 )}
 
-                {/* SETTINGS / PASSCODE TAB */}
+                {/* SETTINGS / PASSCODE & DANGER ZONE TAB */}
                 {activeTab === 'settings' && (
-                  <form onSubmit={handleChangePasscode} className="space-y-4 max-w-sm text-xs">
-                    <div>
-                      <h4 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                        Change Owner Passcode
-                      </h4>
-                      <p className="text-xs text-slate-400">Update passcode required to access the admin portal</p>
-                    </div>
+                  <div className="space-y-8 text-xs">
+                    <form onSubmit={handleChangePasscode} className="space-y-4 max-w-sm">
+                      <div>
+                        <h4 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                          Change Owner Passcode
+                        </h4>
+                        <p className="text-xs text-slate-400">Update passcode required to access the admin portal</p>
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="font-mono font-bold">New Admin Passcode</label>
-                      <input
-                        type="password"
-                        required
-                        minLength={4}
-                        placeholder="Enter new passcode..."
-                        value={newPasscode}
-                        onChange={(e) => setNewPasscode(e.target.value)}
-                        className={`w-full px-3 py-2.5 rounded-xl border font-mono ${
-                          darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
-                        }`}
-                      />
-                    </div>
+                      <div className="space-y-1">
+                        <label className="font-mono font-bold">New Admin Passcode</label>
+                        <input
+                          type="password"
+                          required
+                          minLength={4}
+                          placeholder="Enter new passcode..."
+                          value={newPasscode}
+                          onChange={(e) => setNewPasscode(e.target.value)}
+                          className={`w-full px-3 py-2.5 rounded-xl border font-mono ${
+                            darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                          }`}
+                        />
+                      </div>
 
-                    <button
-                      type="submit"
-                      className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold cursor-pointer hover:bg-emerald-400"
-                    >
-                      Update Passcode
-                    </button>
-                    {passcodeSaved && <p className="text-emerald-400 font-mono">Passcode updated successfully!</p>}
-                  </form>
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold cursor-pointer hover:bg-amber-400"
+                      >
+                        Update Passcode
+                      </button>
+                      {passcodeSaved && <p className="text-emerald-400 font-mono">Passcode updated successfully!</p>}
+                    </form>
+
+                    {/* DANGER ZONE & FULL SITE WIPE */}
+                    <div className={`p-5 rounded-2xl border ${darkMode ? 'bg-rose-950/20 border-rose-900/40 text-slate-200' : 'bg-rose-50 border-rose-200 text-slate-900'} space-y-4`}>
+                      <div className="flex items-center gap-2 text-rose-500">
+                        <Trash2 className="w-5 h-5" />
+                        <h4 className="text-sm font-bold tracking-wide uppercase">Danger Zone & Site Maintenance</h4>
+                      </div>
+
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Control global data persistence, perform full site resets, or restore pre-seeded portfolio defaults.
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleResetProjects}
+                          className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <RotateCcw className="w-4 h-4 text-amber-400" />
+                          <span>Restore Portfolio Defaults</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleWipeSite}
+                          className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold flex items-center gap-2 cursor-pointer transition-colors shadow-lg shadow-rose-600/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Full Site Reset (Wipe All Data)</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
               </div>

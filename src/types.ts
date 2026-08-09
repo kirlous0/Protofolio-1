@@ -28,6 +28,8 @@ export interface Project {
   androidPackageName?: string;
   seoMetadata?: SEOMetadata;
   isDraft?: boolean;
+  starsCount?: number;
+  isLikedByMe?: boolean;
 }
 
 export interface IntegrationConfig {

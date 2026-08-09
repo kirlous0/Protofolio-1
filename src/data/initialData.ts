@@ -16,7 +16,7 @@ export const initialPersonalInfo: PersonalInfo = {
 };
 
 export const initialSkills: SkillItem[] = [
-  // Web Development
+  // Web & Full Stack Development
   { name: 'HTML5', category: 'Web Development', level: 95, iconName: 'Code2', description: 'Semantic structure, accessibility & modern markup standards.' },
   { name: 'CSS3', category: 'Web Development', level: 90, iconName: 'Palette', description: 'Flexbox, Grid, CSS animations & custom design tokens.' },
   { name: 'JavaScript', category: 'Web Development', level: 92, iconName: 'FileCode', description: 'ES6+, Async/Await, Web APIs, DOM manipulation & state patterns.' },
@@ -24,16 +24,17 @@ export const initialSkills: SkillItem[] = [
   { name: 'Next.js', category: 'Web Development', level: 88, iconName: 'Globe', description: 'App Router, SSR, SSG, Server Actions & API routes.' },
   { name: 'Tailwind CSS', category: 'Web Development', level: 95, iconName: 'Sparkles', description: 'Utility-first design, custom configurations & responsive layouts.' },
 
-  // Mobile Development
+  // Mobile & Native Engineering
   { name: 'Kotlin', category: 'Mobile Development', level: 88, iconName: 'Smartphone', description: 'Coroutines, Flow, OOP, functional patterns & Android SDK.' },
   { name: 'Jetpack Compose', category: 'Mobile Development', level: 85, iconName: 'Layout', description: 'Declarative UI, State management, Material 3 & custom animations.' },
-  { name: 'Firebase', category: 'Mobile Development', level: 85, iconName: 'Flame', description: 'Firestore, Authentication, Cloud Storage & Realtime DB.' },
-  { name: 'SQLite', category: 'Mobile Development', level: 82, iconName: 'Database', description: 'Room DB, local caching, indexing & relational mobile schemas.' },
+  { name: 'Android Simulator Frame', category: 'Mobile Development', level: 90, iconName: 'Smartphone', description: 'In-browser mobile emulator for running native Compose UI apps.' },
+  { name: 'SQLite / Room DB', category: 'Mobile Development', level: 82, iconName: 'Database', description: 'Room DB, local caching, indexing & relational mobile schemas.' },
 
-  // Programming & Tools
-  { name: 'Python', category: 'Programming & Tools', level: 80, iconName: 'Terminal', description: 'Automation scripts, REST APIs & backend utilities.' },
-  { name: 'Git', category: 'Programming & Tools', level: 90, iconName: 'GitBranch', description: 'Version control, branching strategies, rebasing & merge workflows.' },
-  { name: 'GitHub', category: 'Programming & Tools', level: 92, iconName: 'Github', description: 'CI/CD workflows, issue tracking, actions & code review.' },
+  // Specialized Cloud, AI & Performance Technologies
+  { name: 'Google Gemini AI Engine', category: 'Programming & Tools', level: 92, iconName: 'Sparkles', description: 'Gemini 2.5 Flash API with JSON Schema validation & multi-model fallback.' },
+  { name: 'Firebase Firestore Sync', category: 'Programming & Tools', level: 90, iconName: 'Flame', description: 'Real-time cloud database sync with local cache locks & instant reactivity.' },
+  { name: 'HD Screenshot & CDN Engine', category: 'Programming & Tools', level: 88, iconName: 'Globe', description: 'Automated live website screenshot generator & progressive CDN image fallback.' },
+  { name: 'Git & GitHub Workflows', category: 'Programming & Tools', level: 92, iconName: 'GitBranch', description: 'CI/CD workflows, version control, branching & code review.' },
 ];
 
 export const initialServices: ServiceItem[] = [

@@ -25,6 +25,7 @@ interface ProjectsProps {
   onSelectProject: (project: Project) => void;
   onLaunchAndroidSim: (project: Project) => void;
   onOpenAdmin: () => void;
+  onToggleLikeProject?: (id: string) => void;
 }
 
 export const Projects: React.FC<ProjectsProps> = ({
@@ -33,6 +34,7 @@ export const Projects: React.FC<ProjectsProps> = ({
   onSelectProject,
   onLaunchAndroidSim,
   onOpenAdmin,
+  onToggleLikeProject,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<ProjectCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -293,12 +295,35 @@ export const Projects: React.FC<ProjectsProps> = ({
 
                   {/* Card Footer Links */}
                   <div className="p-6 pt-0 border-t border-slate-800/20 flex items-center justify-between mt-4">
-                    <button
-                      onClick={() => onSelectProject(project)}
-                      className="text-xs font-mono font-semibold text-blue-500 hover:text-blue-600 flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Full Case Study &rarr;</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => onSelectProject(project)}
+                        className="text-xs font-mono font-semibold text-blue-500 hover:text-blue-600 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Case Study &rarr;</span>
+                      </button>
+
+                      {/* Optimistic Star Button */}
+                      {onToggleLikeProject && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleLikeProject(project.id);
+                          }}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                            project.isLikedByMe
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 scale-105'
+                              : darkMode
+                                ? 'bg-slate-800/60 text-slate-400 hover:text-amber-400 border border-slate-700/60'
+                                : 'bg-slate-100 text-slate-600 hover:text-amber-600 border border-slate-200'
+                          }`}
+                          title={project.isLikedByMe ? 'Starred!' : 'Star this project'}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${project.isLikedByMe ? 'fill-amber-400 text-amber-400' : ''}`} />
+                          <span>{project.starsCount || 12}</span>
+                        </button>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2">
                       {project.githubUrl && (

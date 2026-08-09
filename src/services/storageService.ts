@@ -25,9 +25,20 @@ function withTimeout<T>(promise: Promise<T>, ms = 3000): Promise<T> {
   });
 }
 
+let lastLocalModificationTime = 0;
+
 export const storageService = {
   // Sync with Firebase Firestore across browsers & devices
   async syncWithServer(): Promise<{ projects: Project[]; personalInfo: PersonalInfo; messages: ContactMessage[] }> {
+    // If a local modification (add/edit/delete/wipe) happened within the last 10s, don't overwrite local storage with remote data
+    if (Date.now() - lastLocalModificationTime < 10000) {
+      return {
+        projects: this.getProjects(),
+        personalInfo: this.getPersonalInfo(),
+        messages: this.getMessages(),
+      };
+    }
+
     let syncedProjects: Project[] | null = null;
     let syncedInfo: PersonalInfo | null = null;
     let syncedMessages: ContactMessage[] | null = null;
@@ -77,6 +88,15 @@ export const storageService = {
       }
     } catch (e) {
       console.warn('Firestore fetch encountered an issue or timeout, falling back to local server/localStorage:', e);
+    }
+
+    // Check again if local modification happened during network wait
+    if (Date.now() - lastLocalModificationTime < 10000) {
+      return {
+        projects: this.getProjects(),
+        personalInfo: this.getPersonalInfo(),
+        messages: this.getMessages(),
+      };
     }
 
     // Update localStorage if Firestore sync succeeded
@@ -175,6 +195,7 @@ export const storageService = {
   },
 
   savePersonalInfo(info: PersonalInfo): void {
+    lastLocalModificationTime = Date.now();
     localStorage.setItem(PERSONAL_INFO_KEY, JSON.stringify(info));
     if (db) {
       setDoc(doc(db, 'personalInfo', 'main'), info).catch(() => {});
@@ -221,13 +242,14 @@ export const storageService = {
       }
     }
 
-    // Default seed
+    // Default seed only if key never existed in localStorage
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(initialProjects));
     localStorage.setItem(SEEDED_KEY, 'true');
     return initialProjects;
   },
 
   saveProjects(projects: Project[]): void {
+    lastLocalModificationTime = Date.now();
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
     localStorage.setItem(SEEDED_KEY, 'true');
 
@@ -294,15 +316,93 @@ export const storageService = {
   },
 
   deleteProject(id: string): boolean {
+    lastLocalModificationTime = Date.now();
     const projects = this.getProjects();
     const filtered = projects.filter(p => p.id !== id);
     this.saveProjects(filtered);
     return true;
   },
 
+  toggleLikeProject(id: string): { updatedProject: Project | null; projects: Project[] } {
+    lastLocalModificationTime = Date.now();
+    const projects = this.getProjects();
+    const index = projects.findIndex(p => p.id === id);
+    if (index === -1) return { updatedProject: null, projects };
+
+    const current = projects[index];
+    const isLiked = !current.isLikedByMe;
+    const currentStars = current.starsCount || 12;
+    const updatedStars = isLiked ? currentStars + 1 : Math.max(0, currentStars - 1);
+
+    const updatedProject: Project = {
+      ...current,
+      isLikedByMe: isLiked,
+      starsCount: updatedStars,
+    };
+
+    projects[index] = updatedProject;
+    this.saveProjects(projects);
+    return { updatedProject, projects };
+  },
+
   resetProjectsToDefault(): Project[] {
+    lastLocalModificationTime = Date.now();
     this.saveProjects(initialProjects);
     return initialProjects;
+  },
+
+  // Full Site Reset / Wipe
+  wipeAllData(): { projects: Project[]; personalInfo: PersonalInfo; messages: ContactMessage[] } {
+    lastLocalModificationTime = Date.now();
+    
+    // 1. Reset local storage completely
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify([]));
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify([]));
+    localStorage.setItem(PERSONAL_INFO_KEY, JSON.stringify(initialPersonalInfo));
+    localStorage.setItem(SEEDED_KEY, 'true');
+    localStorage.removeItem(INTEGRATIONS_KEY);
+
+    // 2. Wipe Firestore collections
+    if (db) {
+      (async () => {
+        try {
+          const projSnap = await getDocs(collection(db, 'projects'));
+          const msgSnap = await getDocs(collection(db, 'messages'));
+          const batch = writeBatch(db);
+          projSnap.docs.forEach(d => batch.delete(d.ref));
+          msgSnap.docs.forEach(d => batch.delete(d.ref));
+          batch.set(doc(db, 'system', 'status'), { seeded: true, wipedAt: new Date().toISOString() });
+          await batch.commit();
+        } catch (err) {
+          console.error('Error wiping Firestore:', err);
+        }
+      })();
+    }
+
+    // 3. Clear Express backend JSON files
+    fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projects: [] }),
+    }).catch(() => {});
+
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [] }),
+    }).catch(() => {});
+
+    fetch('/api/personal-info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ info: initialPersonalInfo }),
+    }).catch(() => {});
+
+    return {
+      projects: [],
+      messages: [],
+      personalInfo: initialPersonalInfo,
+    };
   },
 
   // Contact Messages CRUD

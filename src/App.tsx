@@ -19,6 +19,7 @@ import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
 import { ProjectFormModal } from './components/admin/ProjectFormModal';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import { InteractiveFloatingWidget } from './components/InteractiveFloatingWidget';
+import { SEOHead } from './components/SEOHead';
 import { storageService } from './services/storageService';
 import { ContactMessage, PersonalInfo, Project } from './types';
 
@@ -138,12 +139,27 @@ export default function App() {
     setIsProjectFormOpen(true);
   };
 
+  const handleToggleLikeProject = (id: string) => {
+    const { updatedProject, projects: newProjects } = storageService.toggleLikeProject(id);
+    setProjects(newProjects);
+    if (selectedProjectForDetail && updatedProject && selectedProjectForDetail.id === id) {
+      setSelectedProjectForDetail(updatedProject);
+    }
+  };
+
   const unreadMessagesCount = messages.filter(m => !m.read).length;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans relative ${
       darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
     }`}>
+      {/* Dynamic OpenGraph SEO Metadata */}
+      <SEOHead
+        personalInfo={personalInfo}
+        activeSection={activeSection}
+        selectedProject={selectedProjectForDetail}
+      />
+
       {/* Background Interactive Particle Animation */}
       <BackgroundAnimation darkMode={darkMode} enabled={bgAnimationEnabled} />
 
@@ -190,6 +206,7 @@ export default function App() {
           onSelectProject={(proj) => setSelectedProjectForDetail(proj)}
           onLaunchAndroidSim={(proj) => setSelectedProjectForAndroidSim(proj)}
           onOpenAdmin={() => setIsAdminOpen(true)}
+          onToggleLikeProject={handleToggleLikeProject}
         />
 
         <Contact
