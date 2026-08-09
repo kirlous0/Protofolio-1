@@ -34,31 +34,41 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   ...restProps
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [imgSrc, setImgSrc] = useState(src);
+  const [imgSrc, setImgSrc] = useState(() => {
+    if (src && (src.includes('image.thum.io') || src.includes('microlink.io'))) {
+      return getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
+    }
+    return src || getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
+  });
   const [hasError, setHasError] = useState(false);
+  const isLoadedRef = React.useRef(false);
 
   // Sync state if src prop changes & attach fast fallback timer
   React.useEffect(() => {
-    setImgSrc(src);
+    let initialSrc = src;
+    if (src && (src.includes('image.thum.io') || src.includes('microlink.io'))) {
+      initialSrc = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
+    }
+    setImgSrc(initialSrc || getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack));
     setHasError(false);
     setIsLoaded(false);
+    isLoadedRef.current = false;
 
-    // Fast fallback timer: if screenshot service or slow image takes > 2.2s, switch immediately to instant Unsplash HD UI fallback
     let isMounted = true;
     const timer = setTimeout(() => {
-      if (isMounted && !isLoaded) {
-        if (src.includes('image.thum.io') || src.includes('microlink.io') || !src) {
+      if (isMounted && !isLoadedRef.current) {
+        if (!initialSrc || initialSrc.includes('image.thum.io') || initialSrc.includes('microlink.io')) {
           const fallback = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
           setImgSrc(fallback);
         }
       }
-    }, 2200);
+    }, 1200);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [src, fallbackCategory, fallbackTitle, fallbackTechStack, isLoaded]);
+  }, [src, fallbackCategory, fallbackTitle, fallbackTechStack]);
 
   // Determine optimal sizes attribute based on context type
   let defaultSizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw';
@@ -76,15 +86,6 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (!hasError) {
       setHasError(true);
-      if (imgSrc.includes('image.thum.io')) {
-        const urlMatch = imgSrc.match(/https?:\/\/(?!image\.thum\.io)[^\s]+/);
-        if (urlMatch) {
-          const targetUrl = urlMatch[0];
-          const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&embed=screenshot.url&waitForTimeout=4000&force=true`;
-          setImgSrc(microlinkUrl);
-          return;
-        }
-      }
       const fallback = getFallbackScreenshot(fallbackCategory, fallbackTitle, fallbackTechStack);
       setImgSrc(fallback);
     } else {
@@ -95,6 +96,7 @@ export const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   };
 
   const handleLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    isLoadedRef.current = true;
     setIsLoaded(true);
     if (onLoad) onLoad(e);
   };
