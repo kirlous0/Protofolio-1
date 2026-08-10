@@ -100,16 +100,12 @@ export const initialProjects: Project[] = [
     techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Vercel', 'Node.js', 'Firebase'],
     githubUrl: 'https://github.com/kirlouswael/portfolio',
     liveUrl: 'https://kirlous-portfolio.vercel.app',
-    imageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://kirlous-portfolio.vercel.app',
     images: [
-      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://kirlous-portfolio.vercel.app'
     ],
     bestImages: [
-      'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://kirlous-portfolio.vercel.app'
     ],
     fitMode: 'contain',
     featured: true,
@@ -130,16 +126,12 @@ export const initialProjects: Project[] = [
     techStack: ['Kotlin', 'Jetpack Compose', 'Room DB', 'Firebase', 'Android SDK'],
     githubUrl: 'https://github.com/kirlouswael/fitpulse-android',
     liveUrl: 'https://fitpulse-app.vercel.app',
-    imageUrl: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://fitpulse-app.vercel.app',
     images: [
-      'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://fitpulse-app.vercel.app'
     ],
     bestImages: [
-      'https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://fitpulse-app.vercel.app'
     ],
     fitMode: 'contain',
     featured: true,
@@ -161,16 +153,12 @@ export const initialProjects: Project[] = [
     techStack: ['Next.js', 'React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS'],
     githubUrl: 'https://github.com/kirlouswael/nexus-analytics',
     liveUrl: 'https://nexus-analytics.vercel.app',
-    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nexus-analytics.vercel.app',
     images: [
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1542744094-3a31b272c390?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nexus-analytics.vercel.app'
     ],
     bestImages: [
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nexus-analytics.vercel.app'
     ],
     fitMode: 'contain',
     featured: true,
@@ -191,16 +179,12 @@ export const initialProjects: Project[] = [
     techStack: ['React', 'TypeScript', 'Tailwind CSS', 'Redux Toolkit', 'REST API'],
     githubUrl: 'https://github.com/kirlouswael/nile-store',
     liveUrl: 'https://nile-store.vercel.app',
-    imageUrl: 'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nile-store.vercel.app',
     images: [
-      'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nile-store.vercel.app'
     ],
     bestImages: [
-      'https://images.unsplash.com/photo-1556742049-0a670f4a4591?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://nile-store.vercel.app'
     ],
     fitMode: 'contain',
     featured: false,
@@ -221,15 +205,12 @@ export const initialProjects: Project[] = [
     techStack: ['React', 'TypeScript', 'Node.js', 'Google Gemini API', 'Tailwind CSS'],
     githubUrl: 'https://github.com/kirlouswael/mindgenius-ai',
     liveUrl: 'https://mindgenius-ai.vercel.app',
-    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://mindgenius-ai.vercel.app',
     images: [
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://mindgenius-ai.vercel.app'
     ],
     bestImages: [
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80'
+      'https://image.thum.io/get/width/1200/crop/800/wait/4/refresh/https://mindgenius-ai.vercel.app'
     ],
     fitMode: 'contain',
     featured: true,

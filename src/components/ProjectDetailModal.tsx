@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project } from '../types';
-import { getFallbackScreenshot } from '../utils/screenshot';
 import { ResponsiveImage } from './ResponsiveImage';
 
 interface ProjectDetailModalProps {

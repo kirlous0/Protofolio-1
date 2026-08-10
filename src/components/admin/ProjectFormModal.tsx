@@ -3,7 +3,7 @@ import { X, Plus, Save, Sparkles, Smartphone, Globe, Code, Wand2, RefreshCw, Che
 import { motion, AnimatePresence } from 'motion/react';
 import { AIEnhancementResponse, Project, SEOMetadata } from '../../types';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
-import { getWebsiteScreenshotUrl, getFallbackScreenshot, getProjectScreenshots } from '../../utils/screenshot';
+import { getWebsiteScreenshotUrl, getProjectScreenshots } from '../../utils/screenshot';
 import { ResponsiveImage } from '../ResponsiveImage';
 
 interface ProjectFormModalProps {
@@ -95,11 +95,11 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setLongDescription('');
       setCategory('Web');
       setTechStackInput('React, TypeScript, Tailwind CSS');
-      setGithubUrl('https://github.com/kirlouswael/my-new-project');
-      setLiveUrl('https://demo.vercel.app');
-      setImageUrl(presetImages[0].url);
-      setImages([presetImages[0].url]);
-      setBestImages([presetImages[0].url]);
+      setGithubUrl('');
+      setLiveUrl('');
+      setImageUrl('');
+      setImages([]);
+      setBestImages([]);
       setFitMode('contain');
       setFeatured(false);
       setAndroidPackageName('com.kirlous.myapp');
