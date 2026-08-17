@@ -37,6 +37,9 @@ export interface IntegrationConfig {
   vercelToken?: string;
   vercelTeamId?: string;
   autoSyncRepos?: boolean;
+  supabaseUrl?: string;
+  supabaseKey?: string;
+  supabaseAutoSync?: boolean;
 }
 
 export interface GitHubRepoItem {

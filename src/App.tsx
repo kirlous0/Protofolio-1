@@ -53,7 +53,7 @@ export default function App() {
     setMessages(storageService.getMessages());
   };
 
-  // Sync data with backend server on mount & window focus
+  // Sync data with backend server on mount & window focus + real-time cloud updates
   useEffect(() => {
     let isMounted = true;
     const syncData = async () => {
@@ -67,6 +67,16 @@ export default function App() {
 
     syncData();
 
+    // Subscribe to live cloud updates across all browsers & tabs
+    const unsubscribeCloud = storageService.subscribeToCloudUpdates(
+      (updatedProjects) => {
+        if (isMounted) setProjects(updatedProjects);
+      },
+      (updatedInfo) => {
+        if (isMounted) setPersonalInfo(updatedInfo);
+      }
+    );
+
     const handleFocus = () => {
       syncData();
     };
@@ -74,6 +84,7 @@ export default function App() {
 
     return () => {
       isMounted = false;
+      unsubscribeCloud();
       window.removeEventListener('focus', handleFocus);
     };
   }, []);

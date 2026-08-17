@@ -20,12 +20,16 @@ import {
   UserCheck,
   Activity,
   Layers,
-  Bot
+  Bot,
+  Database,
+  Copy,
+  Flame
 } from 'lucide-react';
 import { GitHubRepoItem, IntegrationConfig, Project, VercelProjectItem } from '../../types';
 import { storageService } from '../../services/storageService';
 import { enhanceProjectWithAI } from '../../services/aiEnhancerService';
 import { getWebsiteScreenshotUrl, getProjectScreenshots } from '../../utils/screenshot';
+import { testSupabaseConnection, SUPABASE_SQL_SCHEMA, getSupabaseClient } from '../../lib/supabase';
 
 interface IntegrationsTabProps {
   darkMode: boolean;
@@ -71,9 +75,24 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     githubToken: '',
     vercelToken: '',
     vercelTeamId: '',
+    supabaseUrl: '',
+    supabaseKey: '',
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+  
+  // Supabase State
+  const [supabaseTesting, setSupabaseTesting] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    connected: boolean;
+    tableExists: boolean;
+    projectsCount: number;
+    message: string;
+  } | null>(null);
+  const [supabaseSyncing, setSupabaseSyncing] = useState(false);
+  const [supabaseSyncMsg, setSupabaseSyncMsg] = useState('');
+  const [showSchemaModal, setShowSchemaModal] = useState(false);
+  const [copiedSchema, setCopiedSchema] = useState(false);
   
   // GitHub state
   const [ghUser, setGhUser] = useState<GitHubUser | null>(null);
@@ -145,6 +164,11 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     if (loaded.vercelToken) {
       fetchVercelProjects(loaded.vercelToken, loaded.vercelTeamId);
     }
+    if (loaded.supabaseUrl && loaded.supabaseKey) {
+      testSupabaseConnection(loaded.supabaseUrl, loaded.supabaseKey).then((res) => {
+        setSupabaseStatus(res);
+      });
+    }
   }, []);
 
   const handleSaveConfig = () => {
@@ -160,6 +184,48 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       fetchVercelUser(config.vercelToken);
       fetchVercelProjects(config.vercelToken, config.vercelTeamId);
     }
+    if (config.supabaseUrl && config.supabaseKey) {
+      handleTestSupabase();
+    }
+  };
+
+  const handleTestSupabase = async () => {
+    setSupabaseTesting(true);
+    setSupabaseStatus(null);
+    try {
+      const res = await testSupabaseConnection(config.supabaseUrl, config.supabaseKey);
+      setSupabaseStatus(res);
+    } catch (err: any) {
+      setSupabaseStatus({
+        connected: false,
+        tableExists: false,
+        projectsCount: 0,
+        message: err?.message || 'Connection test failed',
+      });
+    } finally {
+      setSupabaseTesting(false);
+    }
+  };
+
+  const handleSyncToSupabase = async () => {
+    setSupabaseSyncing(true);
+    setSupabaseSyncMsg('');
+    try {
+      storageService.saveProjects(existingProjects);
+      storageService.savePersonalInfo(storageService.getPersonalInfo());
+      setSupabaseSyncMsg(`Successfully uploaded ${existingProjects.length} projects & info to Supabase!`);
+      setTimeout(() => setSupabaseSyncMsg(''), 4000);
+    } catch (err: any) {
+      setSupabaseSyncMsg(`Sync error: ${err?.message || 'Failed'}`);
+    } finally {
+      setSupabaseSyncing(false);
+    }
+  };
+
+  const handleCopySchema = () => {
+    navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+    setCopiedSchema(true);
+    setTimeout(() => setCopiedSchema(false), 3000);
   };
 
   // Safe fetch helper to parse JSON regardless of HTTP status
@@ -1018,6 +1084,248 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
           )}
         </div>
       </div>
+
+      {/* Cloud Database & Supabase Persistence Hub */}
+      <div className={`p-6 rounded-2xl border space-y-6 ${
+        darkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                <Database className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className={`text-base font-bold flex items-center gap-2 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                  <span>Cloud Database & Multi-Browser Sync (Supabase & Firestore)</span>
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Ensures all added/edited projects never get lost and sync across any browser, device, or cache clear.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSchemaModal(true)}
+              className="px-3.5 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Code2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Supabase SQL Schema</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncToSupabase}
+              disabled={supabaseSyncing}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-md disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${supabaseSyncing ? 'animate-spin' : ''}`} />
+              <span>{supabaseSyncing ? 'Uploading...' : 'Sync Data to Cloud'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dual Database Status Highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Active Cloud Sync Card */}
+          <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+            darkMode ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 mt-0.5">
+              <Flame className="w-4 h-4" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold font-mono text-slate-200">Firebase Firestore Cloud Sync</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Live & Real-Time
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Active & built-in. Changes made here propagate in real-time across all open browsers without needing manual reload.
+              </p>
+            </div>
+          </div>
+
+          {/* Supabase Status Card */}
+          <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+            darkMode ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 mt-0.5">
+              <Database className="w-4 h-4" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold font-mono text-slate-200">Supabase PostgreSQL Connection</span>
+                {supabaseStatus?.connected ? (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Connected
+                  </span>
+                ) : config.supabaseUrl ? (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> Configured
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20 text-[10px] font-mono">
+                    Optional Standby
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Connect your Supabase project (URL + Anon Key) to persist PostgreSQL tables and run complex relational queries.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Supabase Credentials Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono font-semibold text-slate-400 flex items-center justify-between">
+              <span>Supabase Project URL:</span>
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-400 hover:underline flex items-center gap-1"
+              >
+                Supabase Dashboard <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </label>
+            <input
+              type="text"
+              placeholder="https://xyzprojectid.supabase.co"
+              value={config.supabaseUrl || ''}
+              onChange={(e) => setConfig({ ...config, supabaseUrl: e.target.value })}
+              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:border-emerald-500 ${
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono font-semibold text-slate-400">Supabase Anon / Public Key:</label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                value={config.supabaseKey || ''}
+                onChange={(e) => setConfig({ ...config, supabaseKey: e.target.value })}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border focus:outline-none focus:border-emerald-500 ${
+                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={handleTestSupabase}
+                disabled={!config.supabaseUrl || !config.supabaseKey || supabaseTesting}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5 shrink-0 disabled:opacity-40 cursor-pointer transition-colors"
+                title="Test Supabase database connection and verify tables"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${supabaseTesting ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Test Connection</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Supabase Diagnostic Feedback Banner */}
+        {supabaseStatus && (
+          <div className={`p-3.5 rounded-xl border text-xs font-mono flex items-start gap-2.5 animate-fadeIn ${
+            supabaseStatus.connected && supabaseStatus.tableExists
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : supabaseStatus.connected && !supabaseStatus.tableExists
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}>
+            {supabaseStatus.connected && supabaseStatus.tableExists ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+            ) : supabaseStatus.connected ? (
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+            )}
+            <div className="space-y-1 min-w-0">
+              <p className="font-bold">{supabaseStatus.message}</p>
+              {supabaseStatus.connected && !supabaseStatus.tableExists && (
+                <button
+                  type="button"
+                  onClick={() => setShowSchemaModal(true)}
+                  className="mt-1 px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Code2 className="w-3.5 h-3.5" /> View & Copy SQL Schema Script
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {supabaseSyncMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{supabaseSyncMsg}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Supabase SQL Schema Modal */}
+      {showSchemaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className={`max-w-2xl w-full p-6 rounded-2xl border space-y-4 max-h-[90vh] overflow-y-auto ${
+            darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-emerald-400" />
+                <h4 className="text-base font-bold">Supabase PostgreSQL Schema Script</h4>
+              </div>
+              <button
+                onClick={() => setShowSchemaModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              To use Supabase as your primary PostgreSQL database, open the <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">Supabase SQL Editor</a> in your dashboard, paste the SQL script below, and click <strong>RUN</strong>:
+            </p>
+
+            <div className="relative">
+              <pre className="p-4 rounded-xl bg-slate-950 font-mono text-[11px] text-emerald-300 border border-slate-800 overflow-x-auto max-h-72 leading-relaxed">
+                {SUPABASE_SQL_SCHEMA}
+              </pre>
+              <button
+                onClick={handleCopySchema}
+                className="absolute top-2 right-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
+              >
+                {copiedSchema ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy SQL</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+              <button
+                onClick={() => setShowSchemaModal(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* GitHub Repositories Explorer Section */}
       <div className={`p-6 rounded-2xl border space-y-5 ${

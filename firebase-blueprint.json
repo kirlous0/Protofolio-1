@@ -58,8 +58,42 @@
       "properties": {
         "githubToken": { "type": "string" },
         "vercelToken": { "type": "string" },
-        "autoSync": { "type": "boolean" }
+        "autoSync": { "type": "boolean" },
+        "supabaseUrl": { "type": "string" },
+        "supabaseKey": { "type": "string" }
       }
+    },
+    "system": {
+      "title": "System Status",
+      "description": "Initialization status doc",
+      "type": "object",
+      "properties": {
+        "seeded": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "projects",
+      "description": "Collection of developer portfolio projects"
+    },
+    "/personalInfo/{docId}": {
+      "schema": "personalInfo",
+      "description": "Developer personal information"
+    },
+    "/messages/{messageId}": {
+      "schema": "messages",
+      "description": "Contact form submissions"
+    },
+    "/integrations/{docId}": {
+      "schema": "integrations",
+      "description": "Integration tokens and configuration"
+    },
+    "/system/{docId}": {
+      "schema": "system",
+      "description": "System database initialization flag"
     }
   }
 }
